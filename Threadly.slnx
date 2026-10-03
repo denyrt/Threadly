@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/docs/" />
+  <Folder Name="/orchestration/">
+    <Project Path="orchestration/Threadly.AppHost/Threadly.AppHost.csproj" Id="1868c54b-2b92-4689-b807-3479245fdda2" />
+    <Project Path="orchestration/Threadly.ServiceDefaults/Threadly.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/scripts/" />
+  <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Threadly.Api/Threadly.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>
