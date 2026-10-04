@@ -7,5 +7,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers.MsSql" />
     <ProjectReference Include="../../src/Threadly.Api/Threadly.Api.csproj" />
+    <ProjectReference Include="../../src/Threadly.MigrationWorker/Threadly.MigrationWorker.csproj" />
   </ItemGroup>
 </Project>

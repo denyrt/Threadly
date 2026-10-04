@@ -12,6 +12,7 @@
     <PackageReference Include="Aspire.Hosting.JavaScript" />
     <PackageReference Include="Aspire.Hosting.SqlServer" />
     <ProjectReference Include="..\..\src\Threadly.Api\Threadly.Api.csproj" />
+    <ProjectReference Include="..\..\src\Threadly.MigrationWorker\Threadly.MigrationWorker.csproj" />
   </ItemGroup>
 
 </Project>

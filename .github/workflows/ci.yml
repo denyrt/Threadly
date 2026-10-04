@@ -31,6 +31,13 @@ jobs:
         run: dotnet ef migrations has-pending-model-changes --project src/Threadly.Infrastructure --startup-project src/Threadly.Api --context ThreadlyDbContext --configuration Release --no-build
         env:
           ConnectionStrings__threadlydb: Server=localhost;Database=ThreadlyDesign;Integrated Security=True
+      - name: Trust HTTPS development certificate for Aspire tests
+        run: |
+          export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+          dotnet dev-certs https --trust
+          echo "SSL_CERT_DIR=$SSL_CERT_DIR" >> "$GITHUB_ENV"
+      - name: Verify HTTPS development certificate trust
+        run: dotnet dev-certs https --check --trust
       # Empty scaffolds still execute every runner. Exit code 8 means that no
       # tests were discovered; other failures remain failures. New tests run
       # automatically without adding another job or changing the solution.
@@ -63,4 +70,5 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: docker build --file src/Threadly.Api/Dockerfile --tag threadly-api:ci .
+      - run: docker build --file src/Threadly.MigrationWorker/Dockerfile --tag threadly-migrations:ci .
       - run: docker build --tag threadly-web:ci src/threadly-web

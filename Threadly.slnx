@@ -22,6 +22,7 @@
     <Project Path="src/Threadly.Application/Threadly.Application.csproj" Id="996e6df8-ca92-4134-a385-b9244f14bacf" />
     <Project Path="src/Threadly.Domain/Threadly.Domain.csproj" Id="1960729c-ea5f-4bcd-8c29-4a9594bebe05" />
     <Project Path="src/Threadly.Infrastructure/Threadly.Infrastructure.csproj" Id="db9a31c3-24b6-4d19-a75a-411cbb6c3fb9" />
+    <Project Path="src/Threadly.MigrationWorker/Threadly.MigrationWorker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
