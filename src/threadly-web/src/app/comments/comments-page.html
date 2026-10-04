@@ -1,0 +1,105 @@
+<div class="page-heading">
+  <div>
+    <h1>Comments</h1>
+    <p class="muted">A little space for conversation.</p>
+  </div>
+  <button
+    #composeButton
+    class="button primary"
+    type="button"
+    (click)="showComposer.set(true)"
+    [attr.aria-expanded]="showComposer()"
+    [attr.aria-controls]="showComposer() ? 'comment-composer' : null"
+  >
+    <span aria-hidden="true">＋</span> New comment
+  </button>
+</div>
+
+@if (showComposer()) {
+  <app-comment-composer
+    id="comment-composer"
+    (created)="onCreated()"
+    (cancelled)="closeComposer()"
+  />
+}
+@if (notice()) {
+  <p class="notice" role="status">{{ notice() }}</p>
+}
+
+<section class="feed" aria-label="Comments feed" [attr.aria-busy]="loading()">
+  <div class="feed-heading">
+    <h2>Latest comments</h2>
+    @if (result(); as result) {
+      <span class="muted"
+        >{{ result.totalCount }} {{ result.totalCount === 1 ? 'comment' : 'comments' }}</span
+      >
+    }
+  </div>
+  @if (loading()) {
+    <div class="state" role="status">
+      <span class="spinner" aria-hidden="true"></span>Loading comments…
+    </div>
+  } @else if (error()) {
+    <div class="state">
+      <p class="error-message" role="alert">{{ error() }}</p>
+      <button class="button secondary" type="button" (click)="retry()">Try again</button>
+    </div>
+  } @else if (result(); as result) {
+    @for (comment of result.items; track comment.id) {
+      <app-comment-card [comment]="comment" />
+    } @empty {
+      <div class="state">
+        <h2>
+          {{ result.totalCount === 0 ? 'The conversation starts here.' : 'This page is empty.' }}
+        </h2>
+        <p class="muted">
+          {{
+            result.totalCount === 0
+              ? 'Share the first comment.'
+              : 'Head back to the latest comments.'
+          }}
+        </p>
+        @if (page() > 1) {
+          <button class="button secondary" type="button" (click)="goToPage(1)">
+            Back to first page
+          </button>
+        } @else {
+          <button
+            class="button secondary"
+            type="button"
+            (click)="showComposer.set(true)"
+            [disabled]="showComposer()"
+          >
+            Write a comment
+          </button>
+        }
+      </div>
+    }
+    @if (result.totalCount > 0) {
+      <nav class="pagination" aria-label="Comments pages">
+        <button
+          class="button secondary"
+          type="button"
+          (click)="goToPage(page() - 1)"
+          [disabled]="page() <= 1"
+        >
+          ← Previous
+        </button>
+        <span class="muted"
+          >Page {{ page() }}
+          @if (page() <= totalPages()) {
+            of {{ totalPages() }}
+          }
+        </span>
+        <button
+          class="button secondary"
+          type="button"
+          (click)="goToPage(page() + 1)"
+          [disabled]="page() >= totalPages()"
+        >
+          Next →
+        </button>
+      </nav>
+    }
+  }
+</section>

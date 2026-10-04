@@ -1,0 +1,50 @@
+.composer {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.composer-heading,
+.composer-actions,
+.text-feedback {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.composer-heading {
+  margin-bottom: 1.25rem;
+}
+
+.identity-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.composer-actions {
+  align-items: flex-end;
+  margin-top: 1rem;
+}
+
+.composer-actions .muted {
+  max-width: 15rem;
+}
+
+@media (max-width: 480px) {
+  .composer {
+    padding: 1.125rem;
+  }
+
+  .identity-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .composer-actions {
+    flex-wrap: wrap;
+  }
+}

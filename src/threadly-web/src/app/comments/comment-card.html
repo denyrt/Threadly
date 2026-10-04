@@ -1,0 +1,21 @@
+<article class="comment">
+  <div class="avatar" aria-hidden="true">{{ comment().username.slice(0, 1).toUpperCase() }}</div>
+  <div class="content">
+    <header>
+      <strong>{{ comment().username }}</strong>
+      <time
+        [attr.datetime]="comment().createdAtUtc"
+        [title]="comment().createdAtUtc | date: 'medium'"
+      >
+        {{ comment().createdAtUtc | date: 'MMM d, y · HH:mm' }}
+      </time>
+    </header>
+    <span class="email">{{ comment().email }}</span>
+    <p class="text">{{ comment().text }}</p>
+    @if (!detail()) {
+      <a class="permalink" [routerLink]="['/comments', comment().id]"
+        >View comment <span aria-hidden="true">↗</span></a
+      >
+    }
+  </div>
+</article>

@@ -1,0 +1,63 @@
+<section class="composer" aria-labelledby="composer-title">
+  <div class="composer-heading">
+    <h2 id="composer-title">New comment</h2>
+    <button class="button quiet" type="button" (click)="cancelled.emit()" [disabled]="submitting()">
+      Cancel
+    </button>
+  </div>
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting()">
+    <div class="identity-fields">
+      <div class="field">
+        <label for="username">Username</label>
+        <input
+          #usernameInput
+          id="username"
+          formControlName="username"
+          autocomplete="username"
+          maxlength="32"
+          [attr.aria-invalid]="!!fieldError('username')"
+          aria-describedby="username-error"
+        />
+        <span class="field-error" id="username-error">{{ fieldError('username') }}</span>
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          autocomplete="email"
+          maxlength="254"
+          [attr.aria-invalid]="!!fieldError('email')"
+          aria-describedby="email-error"
+        />
+        <span class="field-error" id="email-error">{{ fieldError('email') }}</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="text">Comment</label>
+      <textarea
+        id="text"
+        formControlName="text"
+        rows="4"
+        maxlength="2000"
+        placeholder="What's on your mind?"
+        [attr.aria-invalid]="!!fieldError('text')"
+        aria-describedby="text-error text-count"
+      ></textarea>
+      <div class="text-feedback">
+        <span class="field-error" id="text-error">{{ fieldError('text') }}</span>
+        <span class="muted" id="text-count">{{ form.controls.text.value.length }} / 2000</span>
+      </div>
+    </div>
+    @if (error()) {
+      <p class="error-message" role="alert">{{ error() }}</p>
+    }
+    <div class="composer-actions">
+      <span class="muted">Your username and email will be visible.</span>
+      <button class="button primary" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Posting…' : 'Post comment' }}
+      </button>
+    </div>
+  </form>
+</section>
