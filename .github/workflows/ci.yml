@@ -63,4 +63,5 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: docker build --file src/Threadly.Api/Dockerfile --tag threadly-api:ci .
+      - run: docker build --file src/Threadly.MigrationWorker/Dockerfile --tag threadly-migrations:ci .
       - run: docker build --tag threadly-web:ci src/threadly-web
