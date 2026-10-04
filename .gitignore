@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Local secrets and generated Aspire deployment artifacts
+.env
+.env.*
+!.env.example
+aspire-output/
+.aspire/deployments/

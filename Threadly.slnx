@@ -1,15 +1,34 @@
 <Solution>
-  <Folder Name="/docs/" />
   <Folder Name="/orchestration/">
-    <Project Path="orchestration/Threadly.AppHost/Threadly.AppHost.csproj" Id="1868c54b-2b92-4689-b807-3479245fdda2" />
+    <Project Path="orchestration/Threadly.AppHost/Threadly.AppHost.csproj" Id="8883013a-05da-45a3-92f4-2816df502a7f" />
     <Project Path="orchestration/Threadly.ServiceDefaults/Threadly.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/scripts/" />
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/.config/">
+    <File Path=".config/dotnet-tools.json" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Threadly.Api/Threadly.Api.csproj" />
+    <Project Path="src/Threadly.Api/Threadly.Api.csproj" Id="e8b4fdd2-1f7a-4026-9fa7-cfe561421953" />
+    <Project Path="src/Threadly.Application/Threadly.Application.csproj" Id="996e6df8-ca92-4134-a385-b9244f14bacf" />
+    <Project Path="src/Threadly.Domain/Threadly.Domain.csproj" Id="1960729c-ea5f-4bcd-8c29-4a9594bebe05" />
+    <Project Path="src/Threadly.Infrastructure/Threadly.Infrastructure.csproj" Id="db9a31c3-24b6-4d19-a75a-411cbb6c3fb9" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/Threadly.Domain.UnitTests/Threadly.Domain.UnitTests.csproj" />
+    <Project Path="tests/Threadly.Application.UnitTests/Threadly.Application.UnitTests.csproj" />
+    <Project Path="tests/Threadly.Infrastructure.UnitTests/Threadly.Infrastructure.UnitTests.csproj" />
+    <Project Path="tests/Threadly.Api.IntegrationTests/Threadly.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Threadly.AppHost.Tests/Threadly.AppHost.Tests.csproj" />
+  </Folder>
 </Solution>
