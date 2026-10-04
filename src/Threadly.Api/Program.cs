@@ -1,6 +1,9 @@
+using Threadly.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.Services.AddInfrastructure();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
