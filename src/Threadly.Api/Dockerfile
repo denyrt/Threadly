@@ -12,16 +12,23 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Threadly.Api/Threadly.Api.csproj", "Threadly.Api/"]
-RUN dotnet restore "./Threadly.Api/Threadly.Api.csproj"
+COPY ["global.json", "."]
+COPY ["Directory.Packages.props", "."]
+COPY ["Directory.Build.props", "."]
+COPY ["src/Threadly.Api/Threadly.Api.csproj", "src/Threadly.Api/"]
+COPY ["src/Threadly.Application/Threadly.Application.csproj", "src/Threadly.Application/"]
+COPY ["src/Threadly.Domain/Threadly.Domain.csproj", "src/Threadly.Domain/"]
+COPY ["src/Threadly.Infrastructure/Threadly.Infrastructure.csproj", "src/Threadly.Infrastructure/"]
+COPY ["orchestration/Threadly.ServiceDefaults/Threadly.ServiceDefaults.csproj", "orchestration/Threadly.ServiceDefaults/"]
+RUN dotnet restore "./src/Threadly.Api/Threadly.Api.csproj" -p:Configuration=$BUILD_CONFIGURATION
 COPY . .
-WORKDIR "/src/Threadly.Api"
-RUN dotnet build "./Threadly.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/src/Threadly.Api"
+RUN dotnet build "./Threadly.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Threadly.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./Threadly.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final

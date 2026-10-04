@@ -2,18 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>a2b303d1-43cf-43e3-8bfa-d6b1ce55b94f</UserSecretsId>
+    <UserSecretsId>979699e6-41a0-4f43-bd9a-dff6f1760c5a</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.24.2-preview.1" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Threadly.Application\Threadly.Application.csproj" />
+    <ProjectReference Include="..\Threadly.Infrastructure\Threadly.Infrastructure.csproj" />
     <ProjectReference Include="..\..\orchestration\Threadly.ServiceDefaults\Threadly.ServiceDefaults.csproj" />
   </ItemGroup>
 

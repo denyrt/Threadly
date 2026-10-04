@@ -1,6 +1,13 @@
 **/.classpath
 **/.dockerignore
 **/.env
+**/.env.*
+**/aspire-output
+**/.angular
+**/coverage
+**/dist
+**/TestResults
+**/artifacts
 **/.git
 **/.gitignore
 **/.project
@@ -24,7 +31,3 @@
 LICENSE
 README.md
 !**/.gitignore
-!.git/HEAD
-!.git/config
-!.git/packed-refs
-!.git/refs/heads/**
