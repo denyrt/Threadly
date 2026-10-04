@@ -6,7 +6,7 @@ Content-Type: application/json
 {
   "username": "Denis",
   "email": "denis@example.com",
-  "text": "Привіт, Threadly!"
+  "text": "Hello, Threadly!"
 }
 
 ###
