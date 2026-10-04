@@ -1,6 +1,21 @@
 @Threadly.Api_HostAddress = http://localhost:5065
 
-GET {{Threadly.Api_HostAddress}}/weatherforecast/
+POST {{Threadly.Api_HostAddress}}/api/comments
+Content-Type: application/json
+
+{
+  "username": "Denis",
+  "email": "denis@example.com",
+  "text": "Привіт, Threadly!"
+}
+
+###
+
+GET {{Threadly.Api_HostAddress}}/api/comments?page=1
 Accept: application/json
 
 ###
+
+@commentId = 00000000-0000-0000-0000-000000000000
+GET {{Threadly.Api_HostAddress}}/api/comments/{{commentId}}
+Accept: application/json
