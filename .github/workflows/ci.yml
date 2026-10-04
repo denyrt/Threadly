@@ -27,6 +27,10 @@ jobs:
       - run: dotnet restore Threadly.slnx
       - run: dotnet build Threadly.slnx --configuration Release --no-restore
       - run: dotnet format Threadly.slnx --verify-no-changes --no-restore
+      - name: Check EF Core model matches migrations
+        run: dotnet ef migrations has-pending-model-changes --project src/Threadly.Infrastructure --startup-project src/Threadly.Api --context ThreadlyDbContext --configuration Release --no-build
+        env:
+          ConnectionStrings__threadlydb: Server=localhost;Database=ThreadlyDesign;Integrated Security=True
       # Empty scaffolds still execute every runner. Exit code 8 means that no
       # tests were discovered; other failures remain failures. New tests run
       # automatically without adding another job or changing the solution.
