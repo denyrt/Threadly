@@ -1,6 +1,10 @@
 <div class="page-heading">
   <h1>Comment</h1>
-  <a class="button secondary" routerLink="/comments">← Back to comments</a>
+  @if (views.current.canGoBack) {
+    <button class="button secondary" type="button" (click)="back()">← Back</button>
+  } @else {
+    <a class="button secondary" routerLink="/comments">← Back to comments</a>
+  }
 </div>
 <section class="feed" aria-label="Comment detail" [attr.aria-busy]="loading()">
   @if (loading()) {
@@ -15,6 +19,13 @@
       }
     </div>
   } @else if (comment(); as comment) {
-    <app-comment-card [comment]="comment" [detail]="true" />
+    @if (comment.parentId) {
+      <a class="button quiet" [routerLink]="['/comments', comment.parentId]"
+        >↑ View parent comment</a
+      >
+    }
+    @for (current of [comment]; track current.id) {
+      <app-comment-thread [comment]="current" [detail]="true" [openReplies]="openReplies()" />
+    }
   }
 </section>

@@ -12,20 +12,22 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, combineLatest, finalize, of, startWith, Subject, switchMap } from 'rxjs';
-import { CommentCard } from './comment-card';
+import { CommentThread } from './comment-thread';
+import { CommentViewState } from './comment-view-state';
 import { CommentComposer } from './comment-composer';
 import { CommentPage } from './comment.models';
 import { CommentsApi } from './comments-api';
 
 @Component({
   selector: 'app-comments-page',
-  imports: [CommentCard, CommentComposer],
+  imports: [CommentThread, CommentComposer],
   templateUrl: './comments-page.html',
   styleUrl: './comments-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CommentsPage implements OnInit {
   private readonly api = inject(CommentsApi);
+  private readonly views = inject(CommentViewState);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -53,7 +55,9 @@ export class CommentsPage implements OnInit {
           this.loading.set(true);
           this.error.set(null);
 
-          return this.api.getPage(this.page()).pipe(
+          return (
+            this.views.current.page ? of(this.views.current.page) : this.api.getPage(this.page())
+          ).pipe(
             catchError(() => {
               this.error.set('Comments could not be loaded. Please try again.');
               return of(null);
@@ -63,7 +67,11 @@ export class CommentsPage implements OnInit {
         }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((result) => this.result.set(result));
+      .subscribe((result) => {
+        this.views.current.page = result;
+        this.result.set(result);
+        this.views.restoreScroll();
+      });
   }
 
   goToPage(page: number) {
@@ -72,6 +80,7 @@ export class CommentsPage implements OnInit {
   }
 
   retry() {
+    this.views.current.page = null;
     this.refresh.next();
   }
 
@@ -84,6 +93,7 @@ export class CommentsPage implements OnInit {
     this.closeComposer();
     this.notice.set('Comment posted.');
     if (this.page() === 1) {
+      this.views.current.page = null;
       this.refresh.next();
     } else {
       void this.router.navigate(['/comments'], { queryParams: { page: 1 } });

@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Threadly.Api.IntegrationTests.Commentaries;
 
-public sealed class CommentsApiTests(SqlServerFixture sqlServer) : IAsyncLifetime
+public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyncLifetime
 {
     private readonly string connectionString = new SqlConnectionStringBuilder(sqlServer.ConnectionString)
     {
@@ -26,6 +26,7 @@ public sealed class CommentsApiTests(SqlServerFixture sqlServer) : IAsyncLifetim
 
     private WebApplicationFactory<Program> factory = null!;
     private HttpClient client = null!;
+    private readonly SqlQueryRecorder queries = new();
 
     public async ValueTask InitializeAsync()
     {
@@ -35,6 +36,7 @@ public sealed class CommentsApiTests(SqlServerFixture sqlServer) : IAsyncLifetim
         factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
+            builder.ConfigureServices(services => services.AddDbContext<ThreadlyDbContext>(options => options.AddInterceptors(queries)));
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
@@ -87,6 +89,8 @@ public sealed class CommentsApiTests(SqlServerFixture sqlServer) : IAsyncLifetim
             await response.Content.ReadFromJsonAsync<CommentaryDto>(cancellationToken));
         Assert.NotEqual(Guid.Empty, created.Id);
         Assert.NotEqual(suppliedId, created.Id);
+        Assert.Null(created.ParentId);
+        Assert.Equal(0, created.ReplyCount);
         Assert.Equal("Denis42", created.Username);
         Assert.Equal("Denis@Example.com", created.Email);
         Assert.Equal("Привіт, світе! 🧵\nДругий рядок.", created.Text);
@@ -242,6 +246,10 @@ public sealed class CommentsApiTests(SqlServerFixture sqlServer) : IAsyncLifetim
                 context.Commentaries.Add(commentary);
                 context.Entry(commentary).Property(value => value.Id).CurrentValue = KnownId(index);
             }
+
+            Commentary reply = new("Reader", "reader@example.com", "Reply excluded from root pages", timestamp, KnownId(0));
+            context.Add(reply);
+            context.Add(new Commentary("Reader", "reader@example.com", "Nested reply excluded too", timestamp, reply.Id));
 
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         }

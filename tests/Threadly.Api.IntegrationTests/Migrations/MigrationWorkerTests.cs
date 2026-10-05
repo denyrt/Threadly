@@ -45,7 +45,7 @@ public sealed class MigrationWorkerTests(SqlServerFixture sqlServer) : IAsyncLif
         await using (ThreadlyDbContext dbContext = CreateContext())
         {
             Assert.Empty(await dbContext.Database.GetPendingMigrationsAsync(cancellationToken));
-            Assert.Single(await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken));
+            Assert.Equal(dbContext.Database.GetMigrations(), await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken));
             Assert.Empty(await dbContext.Commentaries.ToListAsync(cancellationToken));
 
             dbContext.Commentaries.Add(commentary);
@@ -72,7 +72,7 @@ public sealed class MigrationWorkerTests(SqlServerFixture sqlServer) : IAsyncLif
         Assert.NotEqual(0, await RunWorkerAsync(connectionString));
 
         Assert.Empty(await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken));
-        Assert.Single(await dbContext.Database.GetPendingMigrationsAsync(cancellationToken));
+        Assert.Equal(dbContext.Database.GetMigrations(), await dbContext.Database.GetPendingMigrationsAsync(cancellationToken));
     }
 
     [Fact]

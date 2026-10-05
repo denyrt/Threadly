@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { ViewportScroller } from '@angular/common';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -16,11 +17,21 @@ describe('Comments', () => {
     email: 'denis@example.com',
     text: 'Hello, Threadly!\nA second line.',
     createdAtUtc: '2026-10-05T10:30:00Z',
+    parentId: null,
+    replyCount: 0,
   };
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ViewportScroller,
+          useValue: { getScrollPosition: () => [0, 0], scrollToPosition: vi.fn() },
+        },
+      ],
     });
     http = TestBed.inject(HttpTestingController);
     harness = await RouterTestingHarness.create();

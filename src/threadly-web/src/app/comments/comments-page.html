@@ -46,7 +46,7 @@
     </div>
   } @else if (result(); as result) {
     @for (comment of result.items; track comment.id) {
-      <app-comment-card [comment]="comment" />
+      <app-comment-thread [comment]="comment" />
     } @empty {
       <div class="state">
         <h2>

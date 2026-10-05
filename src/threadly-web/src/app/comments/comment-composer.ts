@@ -6,6 +6,7 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  input,
   output,
   signal,
   viewChild,
@@ -31,6 +32,7 @@ export class CommentComposer implements AfterViewInit {
     viewChild.required<ElementRef<HTMLInputElement>>('usernameInput');
 
   readonly created = output<Comment>();
+  readonly parent = input<Comment | null>(null);
   readonly cancelled = output<void>();
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
@@ -53,6 +55,10 @@ export class CommentComposer implements AfterViewInit {
 
   ngAfterViewInit() {
     this.usernameInput().nativeElement.focus();
+  }
+
+  fieldId(name: string) {
+    return this.parent() ? `reply-${this.parent()!.id}-${name}` : name;
   }
 
   fieldError(field: 'username' | 'email' | 'text'): string | null {
@@ -86,7 +92,10 @@ export class CommentComposer implements AfterViewInit {
       return;
     }
 
-    const payload = this.form.getRawValue();
+    const payload = {
+      ...this.form.getRawValue(),
+      ...(this.parent() ? { parentId: this.parent()!.id } : {}),
+    };
     this.submitting.set(true);
     this.error.set(null);
     this.serverErrors.set({});
@@ -107,7 +116,9 @@ export class CommentComposer implements AfterViewInit {
           const problem = error.error as ValidationProblem | null;
           if (error.status === 400 && problem?.errors) {
             this.serverErrors.set(problem.errors);
-            this.error.set('Please check the highlighted fields.');
+            this.error.set(
+              problem.errors['parentId']?.[0] ?? 'Please check the highlighted fields.',
+            );
           } else {
             this.error.set('Your comment could not be posted. Please try again.');
           }
