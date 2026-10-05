@@ -1,5 +1,11 @@
-<main>
-  <h1>{{ title() }}</h1>
-  <p>Minimalistic app for posts.</p>
+<header class="site-header">
+  <nav aria-label="Main navigation">
+    <a class="brand" routerLink="/comments"
+      ><span class="brand-mark" aria-hidden="true">t</span>Threadly</a
+    >
+    <a class="home-link" routerLink="/comments">Home</a>
+  </nav>
+</header>
+<main class="shell" id="main-content">
+  <router-outlet />
 </main>
-<router-outlet />

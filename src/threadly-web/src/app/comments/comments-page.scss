@@ -1,0 +1,26 @@
+app-comment-card {
+  border-bottom: 1px solid var(--border);
+}
+
+app-comment-card:last-of-type {
+  border-bottom: 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 480px) {
+  .pagination {
+    padding: 1rem;
+  }
+
+  .pagination .button {
+    padding: 0.625rem;
+  }
+}
