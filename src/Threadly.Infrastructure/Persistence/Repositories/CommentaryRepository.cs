@@ -14,7 +14,6 @@ internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : IComme
     {
         dbContext.Commentaries.Add(commentary);
 
-        // A single SaveChanges commits the creation atomically, with EF's configured retry strategy.
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -31,7 +30,6 @@ internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : IComme
         int totalCount = await dbContext.Commentaries.CountAsync(cancellationToken);
         long offset = ((long)page - 1) * pageSize;
 
-        // Count and items may differ during concurrent writes; reads do not need a snapshot transaction.
         if (offset >= totalCount)
         {
             return new CommentaryPage([], page, pageSize, totalCount);
