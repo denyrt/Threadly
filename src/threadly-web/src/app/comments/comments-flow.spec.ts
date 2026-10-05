@@ -151,6 +151,62 @@ describe('Comments', () => {
     expect(element().querySelector('#text-error')?.textContent).toContain('required');
   });
 
+  it('requires every field before posting', async () => {
+    await openFeed();
+    await openComposer();
+    submitForm();
+    await render();
+
+    http.expectNone((request) => request.method === 'POST');
+    for (const field of ['username', 'email', 'text']) {
+      expect(element().querySelector(`#${field}-error`)?.textContent).toContain('required');
+      expect(element().querySelector(`#${field}`)?.getAttribute('aria-invalid')).toBe('true');
+    }
+  });
+
+  it.each([
+    { field: 'username', limit: 32, value: 'a'.repeat(33) },
+    {
+      field: 'email',
+      limit: 254,
+      value: `${'a'.repeat(65)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(61)}`,
+    },
+    { field: 'text', limit: 2000, value: 'a'.repeat(2001) },
+  ])('rejects $field longer than $limit characters', async ({ field, limit, value }) => {
+    await openFeed();
+    await openComposer();
+    fillValidComment();
+    fillField(field, value);
+    submitForm();
+    await render();
+
+    http.expectNone((request) => request.method === 'POST');
+    expect(element().querySelector(`#${field}-error`)?.textContent).toContain(
+      `Use at most ${limit} characters.`,
+    );
+  });
+
+  it('accepts valid values at the maximum lengths', async () => {
+    await openFeed();
+    await openComposer();
+    const values = {
+      username: 'a'.repeat(32),
+      email: `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(61)}`,
+      text: 'a'.repeat(2000),
+    };
+    for (const [field, value] of Object.entries(values)) {
+      fillField(field, value);
+    }
+    submitForm();
+
+    const post = http.expectOne({ method: 'POST', url: '/api/comments' });
+    expect(post.request.body).toEqual(values);
+    post.flush({ ...comment, ...values });
+    respondWithPage(1, [{ ...comment, ...values }]);
+    await render();
+    expect(element().textContent).toContain('Comment posted.');
+  });
+
   it('prevents duplicate submissions and refreshes the first page after creating from page two', async () => {
     await openFeed(2, [comment], 26);
     await openComposer();
