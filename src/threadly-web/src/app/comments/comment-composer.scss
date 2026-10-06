@@ -19,6 +19,15 @@
   margin-bottom: 1.25rem;
 }
 
+.composer-heading h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.composer-heading button {
+  flex-shrink: 0;
+}
+
 .identity-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;

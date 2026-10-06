@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Threadly.Domain.Commentaries;
 
@@ -8,10 +9,16 @@ internal sealed class CommentaryConfiguration : IEntityTypeConfiguration<Comment
 {
     public void Configure(EntityTypeBuilder<Commentary> builder)
     {
-        builder.ToTable("Commentaries");
+        builder.ToTable("Commentaries", table =>
+            table.HasCheckConstraint("CK_Commentaries_ParentId_NotSelf", "[ParentId] <> [Id]"));
 
         builder.HasKey(commentary => commentary.Id);
         builder.Property(commentary => commentary.Id).ValueGeneratedNever();
+
+        builder.Property(commentary => commentary.ParentId).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+        builder.HasOne<Commentary>().WithMany().HasForeignKey(commentary => commentary.ParentId)
+            .OnDelete(DeleteBehavior.NoAction);
+        builder.HasIndex(commentary => new { commentary.ParentId, commentary.CreatedAtUtc, commentary.Id });
 
         builder.Property(commentary => commentary.Username)
             .IsRequired()

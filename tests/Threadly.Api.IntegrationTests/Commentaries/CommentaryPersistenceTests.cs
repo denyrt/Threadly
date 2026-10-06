@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Threadly.Api.IntegrationTests.Fixtures;
@@ -121,6 +123,50 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
             .Options;
 
         return new ThreadlyDbContext(options);
+    }
+
+    [Fact]
+    public async Task RepliesMigration_PreservesExistingRowsAsRoots()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ThreadlyDbContext context = CreateContext();
+        await context.GetService<IMigrator>().MigrateAsync("20261004161123_InitialCommentaries", token);
+        Guid id = Guid.NewGuid();
+        DateTime timestamp = new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc).AddTicks(7654321);
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO Commentaries (Id, Username, Email, Text, CreatedAtUtc) VALUES ({id}, {"Reader"}, {"reader@example.com"}, {"Existing comment 🧵"}, {timestamp})", token);
+
+        await context.Database.MigrateAsync(token);
+        Commentary comment = await context.Commentaries.SingleAsync(token);
+        Assert.Equal(id, comment.Id);
+        Assert.Equal("Reader", comment.Username);
+        Assert.Equal("reader@example.com", comment.Email);
+        Assert.Equal("Existing comment 🧵", comment.Text);
+        Assert.Equal(timestamp, comment.CreatedAtUtc);
+        Assert.Null(comment.ParentId);
+    }
+
+    [Fact]
+    public async Task ParentRelationship_RejectsSelfReferencesDeletionAndChangesAfterCreation()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ThreadlyDbContext context = CreateContext();
+        Commentary parent = new("Reader", "reader@example.com", "Parent", DateTime.UtcNow);
+        Commentary reply = new("Reader", "reader@example.com", "Reply", DateTime.UtcNow, parent.Id);
+        context.AddRange(parent, reply);
+        await context.SaveChangesAsync(token);
+
+        SqlException self = await Assert.ThrowsAsync<SqlException>(() => context.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE Commentaries SET ParentId = Id WHERE Id = {parent.Id}", token));
+        Assert.Equal(547, self.Number);
+        Assert.Contains("CK_Commentaries_ParentId_NotSelf", self.Message);
+        SqlException deletion = await Assert.ThrowsAsync<SqlException>(() => context.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM Commentaries WHERE Id = {parent.Id}", token));
+        Assert.Equal(547, deletion.Number);
+        Assert.Equal(2, await context.Commentaries.CountAsync(token));
+
+        context.Entry(reply).Property(value => value.ParentId).CurrentValue = null;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => context.SaveChangesAsync(token));
     }
 
     private WebApplicationFactory<Program> GetFactory()

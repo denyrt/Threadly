@@ -4,7 +4,7 @@ using Threadly.Domain.Commentaries;
 
 namespace Threadly.Api.Comments;
 
-public sealed class CreateCommentaryPayload
+public sealed class CreateCommentaryPayload : IValidatableObject
 {
     [Required(ErrorMessage = "Username is required.")]
     [StringLength(Commentary.MaxUsernameLength, ErrorMessage = "Username cannot exceed {1} characters.")]
@@ -20,8 +20,18 @@ public sealed class CreateCommentaryPayload
     [StringLength(Commentary.MaxTextLength, ErrorMessage = "Text cannot exceed {1} characters.")]
     public string Text { get; init; } = string.Empty;
 
+    public Guid? ParentId { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (ParentId == Guid.Empty)
+        {
+            yield return new ValidationResult("Parent ID must not be empty.", ["parentId"]);
+        }
+    }
+
     public CreateCommentaryInput ToInput()
     {
-        return new CreateCommentaryInput(Username, Email, Text);
+        return new CreateCommentaryInput(Username, Email, Text, ParentId);
     }
 }

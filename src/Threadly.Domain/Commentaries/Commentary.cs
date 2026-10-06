@@ -7,6 +7,7 @@ public sealed class Commentary
     public const int MaxTextLength = 2000;
 
     public Guid Id { get; private set; }
+    public Guid? ParentId { get; private set; }
     public string Username { get; private set; }
     public string Email { get; private set; }
     public string Text { get; private set; }
@@ -19,9 +20,15 @@ public sealed class Commentary
         Text = string.Empty;
     }
 
-    public Commentary(string username, string email, string text, DateTime createdAtUtc)
+    public Commentary(string username, string email, string text, DateTime createdAtUtc, Guid? parentId = null)
     {
         Id = Guid.CreateVersion7();
+        if (parentId == Guid.Empty || parentId == Id)
+        {
+            throw new ArgumentException("Parent must be a non-empty ID different from the comment ID.", nameof(parentId));
+        }
+
+        ParentId = parentId;
         Username = Validation.RequireUsername(username, MaxUsernameLength, nameof(username));
         Email = Validation.RequireEmail(email, MaxEmailLength, nameof(email));
         Text = Validation.RequireCommentary(text, MaxTextLength, nameof(text));

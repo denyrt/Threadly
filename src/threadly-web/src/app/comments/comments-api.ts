@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Comment, CommentPage, CreateCommentRequest } from './comment.models';
+import { Comment, CommentPage, CommentReplies, CreateCommentRequest } from './comment.models';
 
 @Injectable({ providedIn: 'root' })
 export class CommentsApi {
@@ -17,5 +17,11 @@ export class CommentsApi {
 
   create(payload: CreateCommentRequest) {
     return this.http.post<Comment>(this.url, payload);
+  }
+
+  getReplies(id: string, cursor: string | null = null) {
+    return this.http.get<CommentReplies>(`${this.url}/${encodeURIComponent(id)}/replies`, {
+      params: cursor === null ? {} : { cursor },
+    });
   }
 }

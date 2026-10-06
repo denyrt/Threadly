@@ -6,7 +6,13 @@ public sealed class CreateCommentaryUseCase(ICommentaryRepository repository, Ti
 {
     public async Task<CommentaryDto> ExecuteAsync(CreateCommentaryInput input, CancellationToken cancellationToken)
     {
-        Commentary commentary = new(input.Username, input.Email, input.Text, timeProvider.GetUtcNow().UtcDateTime);
+        Commentary commentary = new(
+            input.Username, input.Email, input.Text, timeProvider.GetUtcNow().UtcDateTime, input.ParentId);
+
+        if (input.ParentId is Guid parentId && !await repository.ExistsAsync(parentId, cancellationToken))
+        {
+            throw new CommentaryValidationException("parentId", "The parent comment does not exist.");
+        }
 
         await repository.AddAsync(commentary, cancellationToken);
 

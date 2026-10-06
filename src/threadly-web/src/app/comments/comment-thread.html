@@ -1,0 +1,75 @@
+<app-comment-card [comment]="comment()" [detail]="detail()">
+  <div class="thread-actions">
+    <button
+      #replyButton
+      class="button quiet"
+      type="button"
+      (click)="composing.set(true)"
+      [attr.aria-expanded]="composing()"
+      [attr.aria-controls]="composing() ? 'composer-' + comment().id : null"
+    >
+      Reply
+    </button>
+    @if (branch.replyCount() > 0) {
+      @if (level() < 4) {
+        <button
+          class="button quiet"
+          type="button"
+          (click)="toggleReplies()"
+          [attr.aria-expanded]="branch.expanded()"
+          [attr.aria-controls]="'replies-' + comment().id"
+        >
+          {{
+            (branch.expanded() ? 'Hide replies' : 'Show replies') + ' (' + branch.replyCount() + ')'
+          }}
+        </button>
+      } @else {
+        <a
+          class="button quiet"
+          [routerLink]="['/comments', comment().id]"
+          [queryParams]="{ replies: 1 }"
+        >
+          Continue thread ({{ branch.replyCount() }}) →
+        </a>
+      }
+    }
+  </div>
+  @if (branch.created(); as created) {
+    <p class="notice" role="status">
+      Reply added. <a [routerLink]="['/comments', created.id]">View reply</a>
+    </p>
+  }
+</app-comment-card>
+@if (composing()) {
+  <app-comment-composer
+    [id]="'composer-' + comment().id"
+    [parent]="comment()"
+    (created)="onCreated($event)"
+    (cancelled)="closeComposer()"
+  />
+}
+@if (level() < 4) {
+  <section
+    class="replies"
+    [id]="'replies-' + comment().id"
+    [hidden]="!branch.expanded()"
+    [attr.aria-label]="'Replies to ' + comment().username"
+    [attr.aria-busy]="branch.loading()"
+  >
+    @for (reply of branch.items(); track reply.id) {
+      <app-comment-thread [comment]="reply" [level]="level() + 1" />
+    }
+    @if (branch.loading()) {
+      <p class="branch-status muted" role="status">Loading replies…</p>
+    } @else if (branch.error()) {
+      <div class="branch-status">
+        <p class="error-message" role="alert">{{ branch.error() }}</p>
+        <button class="button secondary" type="button" (click)="loadMore()">Retry replies</button>
+      </div>
+    } @else if (branch.loaded() && branch.items().length === 0) {
+      <p class="branch-status muted">No replies yet.</p>
+    } @else if (branch.nextCursor()) {
+      <button class="button quiet load-more" type="button" (click)="loadMore()">Show more</button>
+    }
+  </section>
+}

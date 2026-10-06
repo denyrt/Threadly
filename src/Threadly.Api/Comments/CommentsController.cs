@@ -3,15 +3,18 @@ using Threadly.Application.Commentaries;
 using Threadly.Application.Commentaries.CreateCommentary;
 using Threadly.Application.Commentaries.GetCommentaries;
 using Threadly.Application.Commentaries.GetCommentaryById;
+using Threadly.Application.Commentaries.GetCommentaryReplies;
 
 namespace Threadly.Api.Comments;
 
 [ApiController]
+[CommentaryValidationFilter]
 [Route("api/comments")]
 public sealed class CommentsController(
     CreateCommentaryUseCase createCommentary,
     GetCommentaryByIdUseCase getCommentaryById,
-    GetCommentariesUseCase getCommentaries) : ControllerBase
+    GetCommentariesUseCase getCommentaries,
+    GetCommentaryRepliesUseCase getCommentaryReplies) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType<CommentaryDto>(StatusCodes.Status201Created)]
@@ -49,5 +52,21 @@ public sealed class CommentsController(
         CommentaryPage page = await getCommentaries.ExecuteAsync(payload.ToInput(), cancellationToken);
 
         return Ok(page);
+    }
+
+    [HttpGet("{id}/replies")]
+    [ProducesResponseType<CommentaryReplies>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CommentaryReplies>> GetReplies(
+        [FromRoute] Guid id, [FromQuery] string? cursor, CancellationToken cancellationToken)
+    {
+        // Read the raw value so an explicitly empty cursor is rejected rather than treated as absent.
+        cursor = Request.Query.TryGetValue("cursor", out Microsoft.Extensions.Primitives.StringValues values)
+            ? values.ToString() : null;
+        CommentaryReplies? replies = await getCommentaryReplies.ExecuteAsync(id, cursor, cancellationToken);
+        return replies is null
+            ? Problem(statusCode: StatusCodes.Status404NotFound, title: "Commentary not found.")
+            : Ok(replies);
     }
 }
