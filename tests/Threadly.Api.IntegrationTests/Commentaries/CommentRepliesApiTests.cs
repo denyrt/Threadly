@@ -50,7 +50,7 @@ public sealed partial class CommentsApiTests
     [InlineData("123")]
     public async Task Create_InvalidParentIsAFieldErrorAndDoesNotSave(string parentJson)
     {
-        string json = "{\"username\":\"Reader\",\"email\":\"reader@example.com\",\"text\":\"A reply\",\"parentId\":" + parentJson + "}";
+        string json = "{\"username\":\"Reader\",\"email\":\"reader@example.com\",\"content\":[{\"type\":\"text\",\"html\":\"A reply\"}],\"parentId\":" + parentJson + "}";
         using StringContent content = new(json, Encoding.UTF8, "application/json");
         using HttpResponseMessage response = await client.PostAsync("/api/comments", content, TestContext.Current.CancellationToken);
         ValidationProblemDetails problem = await ReadValidationProblemAsync(response);
@@ -84,12 +84,12 @@ public sealed partial class CommentsApiTests
                 // Reverse the high bytes relative to the low bytes to expose .NET vs SQL GUID ordering.
                 Guid id = Guid.Parse($"{100 - index:x8}-0000-7000-8000-{index:x12}");
                 DateTime time = timestamp.AddTicks(index / 24);
-                Commentary reply = new("Reader", "reader@example.com", $"Reply {index}", time, root.Id);
+                Commentary reply = new("Reader", "reader@example.com", [new TextContentBlock($"Reply {index}")], time, root.Id);
                 context.Add(reply);
                 context.Entry(reply).Property(value => value.Id).CurrentValue = id;
                 expected.Add((id, time));
             }
-            context.Add(new Commentary("Reader", "reader@example.com", "Different parent", timestamp, other.Id));
+            context.Add(new Commentary("Reader", "reader@example.com", [new TextContentBlock("Different parent")], timestamp, other.Id));
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
@@ -146,7 +146,7 @@ public sealed partial class CommentsApiTests
     {
         await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
         ICommentaryRepository repository = scope.ServiceProvider.GetRequiredService<ICommentaryRepository>();
-        Commentary reply = new("Reader", "reader@example.com", "Reply", DateTime.UtcNow, Guid.NewGuid());
+        Commentary reply = new("Reader", "reader@example.com", [new TextContentBlock("Reply")], DateTime.UtcNow, Guid.NewGuid());
         CommentaryValidationException exception = await Assert.ThrowsAsync<CommentaryValidationException>(
             () => repository.AddAsync(reply, TestContext.Current.CancellationToken));
         Assert.Equal("parentId", exception.Field);
@@ -160,7 +160,7 @@ public sealed partial class CommentsApiTests
         {
             username = "Reader",
             email = "reader@example.com",
-            text = "A comment",
+            content = new[] { new { type = "text", html = "<strong>A comment</strong>" } },
             parentId
         }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);

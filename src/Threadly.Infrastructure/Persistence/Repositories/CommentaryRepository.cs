@@ -10,7 +10,7 @@ namespace Threadly.Infrastructure.Persistence.Repositories;
 internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : ICommentaryRepository
 {
     private Expression<Func<Commentary, CommentaryDto>> Projection => commentary => new CommentaryDto(
-        commentary.Id, commentary.Username, commentary.Email, commentary.Text, commentary.CreatedAtUtc,
+        commentary.Id, commentary.Username, commentary.Email, commentary.Content, commentary.CreatedAtUtc,
         commentary.ParentId, dbContext.Commentaries.Count(reply => reply.ParentId == commentary.Id),
         commentary.Attachments.OrderBy(attachment => attachment.Position).Select(attachment => new AttachmentDto(
             attachment.Id, attachment.FileName, attachment.ContentType, attachment.Size, attachment.Width, attachment.Height)).ToList());

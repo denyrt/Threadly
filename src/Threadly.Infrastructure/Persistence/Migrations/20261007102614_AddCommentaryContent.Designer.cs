@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Threadly.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Threadly.Infrastructure.Persistence;
 namespace Threadly.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ThreadlyDbContext))]
-    partial class ThreadlyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007102614_AddCommentaryContent")]
+    partial class AddCommentaryContent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

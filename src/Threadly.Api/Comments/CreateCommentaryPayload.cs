@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using Threadly.Application.Commentaries.Content;
 using Threadly.Application.Commentaries.CreateCommentary;
 using Threadly.Domain.Commentaries;
 
 namespace Threadly.Api.Comments;
 
-public class CreateCommentaryPayload : IValidatableObject
+public class CommentaryIdentityPayload : IValidatableObject
 {
     [Required(ErrorMessage = "Username is required.")]
     [StringLength(Commentary.MaxUsernameLength, ErrorMessage = "Username cannot exceed {1} characters.")]
@@ -16,10 +17,6 @@ public class CreateCommentaryPayload : IValidatableObject
     [EmailAddress(ErrorMessage = "Email must be a valid email address.")]
     public string Email { get; init; } = string.Empty;
 
-    [Required(ErrorMessage = "Text is required.")]
-    [StringLength(Commentary.MaxTextLength, ErrorMessage = "Text cannot exceed {1} characters.")]
-    public string Text { get; init; } = string.Empty;
-
     public Guid? ParentId { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -30,8 +27,12 @@ public class CreateCommentaryPayload : IValidatableObject
         }
     }
 
-    public CreateCommentaryInput ToInput()
-    {
-        return new CreateCommentaryInput(Username, Email, Text, ParentId);
-    }
+}
+
+public sealed class CreateCommentaryPayload : CommentaryIdentityPayload
+{
+    [Required(ErrorMessage = "Content is required.")]
+    public IReadOnlyList<ContentBlockInput>? Content { get; init; }
+
+    public CreateCommentaryInput ToInput() => new(Username, Email, Content, ParentId);
 }

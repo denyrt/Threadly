@@ -11,7 +11,7 @@
       </time>
     </header>
     <span class="email">{{ comment().email }}</span>
-    <p class="text">{{ comment().text }}</p>
+    <app-comment-body [content]="comment().content" />
     @if (images().length) {
       <app-attachment-gallery [commentId]="comment().id" [images]="images()" />
     }

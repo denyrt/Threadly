@@ -6,6 +6,22 @@
   margin-bottom: 1.25rem;
 }
 
+.format-toolbar,
+.link-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.preview {
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
 .composer-heading,
 .composer-actions,
 .text-feedback {

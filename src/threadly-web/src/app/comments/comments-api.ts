@@ -1,6 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Comment, CommentPage, CommentReplies, CreateCommentRequest } from './comment.models';
+import {
+  Comment,
+  CommentPage,
+  CommentPreview,
+  CommentReplies,
+  CreateCommentRequest,
+  TextContentBlock,
+} from './comment.models';
 
 @Injectable({ providedIn: 'root' })
 export class CommentsApi {
@@ -22,7 +29,7 @@ export class CommentsApi {
     const form = new FormData();
     form.append('username', payload.username);
     form.append('email', payload.email);
-    form.append('text', payload.text);
+    form.append('content', JSON.stringify(payload.content));
     if (payload.parentId) form.append('parentId', payload.parentId);
     for (const file of files) form.append('attachments', file, file.name);
     return this.http.post<Comment>(this.url, form);
@@ -32,5 +39,9 @@ export class CommentsApi {
     return this.http.get<CommentReplies>(`${this.url}/${encodeURIComponent(id)}/replies`, {
       params: cursor === null ? {} : { cursor },
     });
+  }
+
+  preview(content: TextContentBlock[]) {
+    return this.http.post<CommentPreview>(`${this.url}/preview`, { content });
   }
 }

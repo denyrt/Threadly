@@ -2,7 +2,7 @@ export interface Comment {
   id: string;
   username: string;
   email: string;
-  text: string;
+  content: TextContentBlock[];
   createdAtUtc: string;
   parentId: string | null;
   replyCount: number;
@@ -33,10 +33,21 @@ export interface CommentPage {
 export interface CreateCommentRequest {
   username: string;
   email: string;
-  text: string;
+  content: TextContentBlock[];
   parentId?: string;
 }
 
 export interface ValidationProblem {
   errors?: Record<string, string[]>;
+}
+
+export interface TextContentBlock {
+  type: 'text';
+  html: string;
+}
+
+export interface CommentPreview {
+  content: TextContentBlock[];
+  budgetUsed: number;
+  budgetLimit: number;
 }

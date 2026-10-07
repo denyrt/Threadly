@@ -15,17 +15,26 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
-import { Comment, ValidationProblem } from './comment.models';
+import { Comment, CommentPreview, TextContentBlock, ValidationProblem } from './comment.models';
+import { CommentBody } from './comment-body';
 import { CommentsApi } from './comments-api';
 
 @Component({
   selector: 'app-comment-composer',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CommentBody],
   templateUrl: './comment-composer.html',
   styleUrl: './comment-composer.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CommentComposer implements AfterViewInit {
+  private readonly textInput = viewChild.required<ElementRef<HTMLTextAreaElement>>('textInput');
+  private previewRevision = 0;
+  private linkSelection = { start: 0, end: 0 };
+  readonly previewResult = signal<CommentPreview | null>(null);
+  readonly previewLoading = signal(false);
+  readonly previewError = signal<string | null>(null);
+  readonly linkOpen = signal(false);
+  readonly linkError = signal<string | null>(null);
   private readonly api = inject(CommentsApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(NonNullableFormBuilder);
@@ -72,6 +81,13 @@ export class CommentComposer implements AfterViewInit {
   });
 
   constructor() {
+    this.form.controls.text.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.previewRevision++;
+      this.previewResult.set(null);
+      this.previewLoading.set(false);
+      this.previewError.set(null);
+      this.linkOpen.set(false);
+    });
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.serverErrors.update((errors) =>
         Object.fromEntries(Object.entries(errors).filter(([key]) => key.startsWith('attachments'))),
@@ -110,7 +126,12 @@ export class CommentComposer implements AfterViewInit {
   }
 
   fieldError(field: 'username' | 'email' | 'text'): string | null {
-    const serverError = this.serverErrors()[field]?.[0];
+    const serverError =
+      field === 'text'
+        ? Object.entries(this.serverErrors()).find(([key]) =>
+            key.toLowerCase().startsWith('content'),
+          )?.[1][0]
+        : this.serverErrors()[field]?.[0];
     if (serverError) {
       return serverError;
     }
@@ -141,8 +162,11 @@ export class CommentComposer implements AfterViewInit {
       return;
     }
 
+    const { username, email } = this.form.getRawValue();
     const payload = {
-      ...this.form.getRawValue(),
+      username,
+      email,
+      content: this.content(),
       ...(this.parent() ? { parentId: this.parent()!.id } : {}),
     };
     this.submitting.set(true);
@@ -181,5 +205,106 @@ export class CommentComposer implements AfterViewInit {
           }
         },
       });
+  }
+
+  private content(): TextContentBlock[] {
+    return [{ type: 'text', html: this.form.controls.text.value }];
+  }
+
+  preview() {
+    if (this.submitting() || this.previewLoading()) return;
+    const revision = ++this.previewRevision;
+    this.previewLoading.set(true);
+    this.previewResult.set(null);
+    this.previewError.set(null);
+    this.api
+      .preview(this.content())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          if (revision !== this.previewRevision) return;
+          this.previewLoading.set(false);
+          this.previewResult.set(result);
+        },
+        error: (error: HttpErrorResponse) => {
+          if (revision !== this.previewRevision) return;
+          this.previewLoading.set(false);
+          const problem = error.error as ValidationProblem | null;
+          this.previewError.set(
+            error.status === 400 && problem?.errors
+              ? Object.values(problem.errors).flat().join(' ')
+              : 'Preview could not be loaded. Your draft is saved here; please try again.',
+          );
+        },
+      });
+  }
+
+  format(tag: 'i' | 'strong' | 'code') {
+    if (this.submitting()) return;
+    const input = this.textInput().nativeElement;
+    const selected = input.value.slice(input.selectionStart, input.selectionEnd);
+    const value = tag === 'code' ? this.escapeHtml(selected) : selected;
+    this.insertMarkup(
+      `<${tag}>${value}</${tag}>`,
+      input.selectionStart,
+      input.selectionEnd,
+      selected ? undefined : tag.length + 2,
+    );
+  }
+
+  openLink() {
+    const input = this.textInput().nativeElement;
+    this.linkSelection = { start: input.selectionStart, end: input.selectionEnd };
+    this.linkError.set(null);
+    this.linkOpen.set(true);
+  }
+
+  insertLink(address: string) {
+    if (this.submitting()) return;
+    try {
+      const url = new URL(address);
+      if (
+        !/^https?:\/\//i.test(address) ||
+        /[\s\\]/.test(address) ||
+        Array.from(address).some(
+          (character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
+        ) ||
+        !['http:', 'https:'].includes(url.protocol) ||
+        !url.hostname
+      )
+        throw new Error();
+    } catch {
+      this.linkError.set('Enter an absolute http or https URL.');
+      return;
+    }
+    const { start, end } = this.linkSelection;
+    const selected = this.form.controls.text.value.slice(start, end);
+    const opening = `<a href="${this.escapeHtml(address)}">`;
+    this.insertMarkup(`${opening}${selected || this.escapeHtml(address)}</a>`, start, end);
+    this.linkOpen.set(false);
+  }
+
+  private escapeHtml(value: string) {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  private insertMarkup(markup: string, start: number, end: number, caretOffset?: number) {
+    const input = this.textInput().nativeElement;
+    input.focus();
+    input.setSelectionRange(start, end);
+    // Native insertText preserves the textarea's browser Undo/Redo history.
+    const inserted = document.execCommand?.('insertText', false, markup);
+    if (!inserted) {
+      input.setRangeText(markup, start, end, 'end');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    this.form.controls.text.setValue(input.value);
+    const caret = start + (caretOffset ?? markup.length);
+    input.setSelectionRange(caret, caret);
   }
 }
