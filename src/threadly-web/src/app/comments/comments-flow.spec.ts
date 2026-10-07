@@ -61,7 +61,12 @@ describe('Comments', () => {
 
   function respondWithPage(page: number, items: Comment[] = [], totalCount = items.length) {
     const response: CommentPage = { items, page, pageSize: 25, totalCount };
-    http.expectOne({ method: 'GET', url: `/api/comments?page=${page}` }).flush(response);
+    http
+      .expectOne({
+        method: 'GET',
+        url: `/api/comments?page=${page}&sortBy=date&sortDirection=desc`,
+      })
+      .flush(response);
   }
 
   async function openFeed(page = 1, items: Comment[] = [], totalCount = items.length) {
@@ -113,7 +118,7 @@ describe('Comments', () => {
 
     button('Next').click();
     await render();
-    expect(TestBed.inject(Router).url).toBe('/comments?page=2');
+    expect(TestBed.inject(Router).url).toBe('/comments?page=2&sortBy=date&sortDirection=desc');
     respondWithPage(
       2,
       [{ ...comment, id: 'second', content: [{ type: 'text', html: 'Second page' }] }],
@@ -138,7 +143,7 @@ describe('Comments', () => {
   it('recovers from a failed list request', async () => {
     await harness.navigateByUrl('/comments');
     http
-      .expectOne('/api/comments?page=1')
+      .expectOne('/api/comments?page=1&sortBy=date&sortDirection=desc')
       .flush({}, { status: 503, statusText: 'Service Unavailable' });
     await render();
     expect(element().querySelector('[role="alert"]')?.textContent).toContain('could not be loaded');
@@ -250,7 +255,7 @@ describe('Comments', () => {
     await render();
     respondWithPage(1, [comment], 27);
     await render();
-    expect(TestBed.inject(Router).url).toBe('/comments?page=1');
+    expect(TestBed.inject(Router).url).toBe('/comments?page=1&sortBy=date&sortDirection=desc');
     expect(element().querySelector('form')).toBeNull();
     expect(element().textContent).toContain('Comment posted.');
     expect(element().textContent).toContain('27 comments');

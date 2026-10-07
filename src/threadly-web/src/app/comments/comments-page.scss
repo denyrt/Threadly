@@ -15,7 +15,30 @@ app-comment-thread:last-of-type {
   border-top: 1px solid var(--border);
 }
 
+.feed-sorting {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+
+  select {
+    min-height: 2.625rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d9d6d0;
+    border-radius: 0.5rem;
+    color: var(--ink);
+    background: var(--surface);
+    font: inherit;
+    font-size: 0.875rem;
+  }
+}
+
 @media (max-width: 480px) {
+  .feed-sorting {
+    padding: 1rem;
+  }
+
   .pagination {
     padding: 1rem;
   }

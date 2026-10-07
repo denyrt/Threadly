@@ -30,6 +30,15 @@ export interface CommentPage {
   totalCount: number;
 }
 
+export type CommentSortBy = 'date' | 'username' | 'email';
+export type CommentSortDirection = 'asc' | 'desc';
+
+export interface CommentFeedQuery {
+  page: number;
+  sortBy: CommentSortBy;
+  sortDirection: CommentSortDirection;
+}
+
 export interface CreateCommentRequest {
   username: string;
   email: string;

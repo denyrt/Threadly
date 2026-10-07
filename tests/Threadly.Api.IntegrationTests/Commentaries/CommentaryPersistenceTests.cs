@@ -115,6 +115,52 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
         Assert.Contains(sqlException.Number, new[] { 8152, 2628 });
     }
 
+    [Fact]
+    public async Task SortingMigration_PreservesDataAndCollationAndCreatesUsableRootOnlyIndexes()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ThreadlyDbContext context = CreateContext();
+        await context.GetService<IMigrator>().MigrateAsync("20261007102614_AddCommentaryContent", token);
+        string collation = await context.Database.SqlQueryRaw<string>(
+            "SELECT CONVERT(nvarchar(128), DATABASEPROPERTYEX(DB_NAME(), 'Collation')) AS [Value]").SingleAsync(token);
+        Commentary root = new("Reader", "reader@example.com", [new TextContentBlock("Existing root")], DateTime.UtcNow);
+        Commentary child = new("Child", "child@example.com", [new TextContentBlock("Existing reply")], DateTime.UtcNow, root.Id);
+        context.AddRange(root, child);
+        await context.SaveChangesAsync(token);
+        await context.Database.MigrateAsync(token);
+        context.ChangeTracker.Clear();
+        Assert.Equal(2, await context.Commentaries.CountAsync(token));
+        Assert.Equal("Existing root", (await context.Commentaries.SingleAsync(value => value.Id == root.Id, token)).Content[0].Html);
+        Assert.Equal(new[] { collation }, await context.Database.SqlQueryRaw<string>("""
+            SELECT DISTINCT collation_name AS [Value] FROM sys.columns
+            WHERE object_id = OBJECT_ID('Commentaries') AND name IN ('Username', 'Email')
+            """).ToArrayAsync(token));
+
+        // Only the two new root indexes and the existing date/replies index are needed.
+        Assert.Equal(3, await context.Database.SqlQueryRaw<int>("""
+            SELECT COUNT(*) AS [Value] FROM sys.indexes
+            WHERE object_id = OBJECT_ID('Commentaries') AND is_primary_key = 0
+            """).SingleAsync(token));
+        Assert.Equal(new[] { "Email:1:0", "Id:2:0", "ParentId:0:1", "Username:1:0" },
+            await context.Database.SqlQueryRaw<string>("""
+                SELECT DISTINCT CONCAT(c.name, ':', ic.key_ordinal, ':', ic.is_included_column) AS [Value]
+                FROM sys.indexes i
+                JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+                JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+                WHERE i.object_id = OBJECT_ID('Commentaries') AND i.has_filter = 1
+                """).OrderBy(value => value).ToArrayAsync(token));
+
+        // A hint verifies eligibility, not whether the optimizer chooses the index for this tiny data set.
+        Assert.Equal(new[] { root.Id }, await context.Database.SqlQueryRaw<Guid>("""
+            SELECT Id AS [Value] FROM Commentaries WITH (INDEX(IX_Commentaries_Username_Id))
+            WHERE ParentId IS NULL ORDER BY Username, Id
+            """).ToArrayAsync(token));
+        Assert.Equal(new[] { root.Id }, await context.Database.SqlQueryRaw<Guid>("""
+            SELECT Id AS [Value] FROM Commentaries WITH (INDEX(IX_Commentaries_Email_Id))
+            WHERE ParentId IS NULL ORDER BY Email DESC, Id DESC
+            """).ToArrayAsync(token));
+    }
+
     private ThreadlyDbContext CreateContext()
     {
         DbContextOptions<ThreadlyDbContext> options = new DbContextOptionsBuilder<ThreadlyDbContext>()
