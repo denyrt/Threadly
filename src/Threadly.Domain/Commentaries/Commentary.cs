@@ -5,6 +5,10 @@ public sealed class Commentary
     public const int MaxUsernameLength = 32;
     public const int MaxEmailLength = 254;
     public const int MaxTextLength = 2000;
+    public const int MaxAttachments = 10;
+
+    private readonly List<CommentaryAttachment> attachments = [];
+    public IReadOnlyCollection<CommentaryAttachment> Attachments => attachments.AsReadOnly();
 
     public Guid Id { get; private set; }
     public Guid? ParentId { get; private set; }
@@ -18,6 +22,16 @@ public sealed class Commentary
         Username = string.Empty;
         Email = string.Empty;
         Text = string.Empty;
+    }
+
+    public void AddAttachment(string fileName, string contentType, byte[] content, int? width, int? height)
+    {
+        if (attachments.Count >= MaxAttachments)
+        {
+            throw new ArgumentException($"A comment can have at most {MaxAttachments} attachments.");
+        }
+
+        attachments.Add(new CommentaryAttachment(Id, attachments.Count, fileName, contentType, content, width, height));
     }
 
     public Commentary(string username, string email, string text, DateTime createdAtUtc, Guid? parentId = null)

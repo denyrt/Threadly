@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using Threadly.Application.Commentaries;
+using Threadly.Application.Commentaries.Attachments;
 using Threadly.Domain.Commentaries;
 
 namespace Threadly.Infrastructure.Persistence.Repositories;
@@ -10,7 +11,9 @@ internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : IComme
 {
     private Expression<Func<Commentary, CommentaryDto>> Projection => commentary => new CommentaryDto(
         commentary.Id, commentary.Username, commentary.Email, commentary.Text, commentary.CreatedAtUtc,
-        commentary.ParentId, dbContext.Commentaries.Count(reply => reply.ParentId == commentary.Id));
+        commentary.ParentId, dbContext.Commentaries.Count(reply => reply.ParentId == commentary.Id),
+        commentary.Attachments.OrderBy(attachment => attachment.Position).Select(attachment => new AttachmentDto(
+            attachment.Id, attachment.FileName, attachment.ContentType, attachment.Size, attachment.Width, attachment.Height)).ToList());
 
     public async Task AddAsync(Commentary commentary, CancellationToken cancellationToken)
     {
@@ -24,6 +27,10 @@ internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : IComme
             && sqlException.Message.Contains("FK_Commentaries_Commentaries_ParentId", StringComparison.Ordinal))
         {
             // The parent can disappear between the existence check and the insert.
+            foreach (CommentaryAttachment attachment in commentary.Attachments)
+            {
+                dbContext.Entry(attachment).State = EntityState.Detached;
+            }
             dbContext.Entry(commentary).State = EntityState.Detached;
             throw new CommentaryValidationException("parentId", "The parent comment does not exist.");
         }

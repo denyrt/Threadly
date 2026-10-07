@@ -21,6 +21,7 @@ describe('Comment replies', () => {
     createdAtUtc: '2026-10-05T12:00:00.1234567Z',
     parentId: null,
     replyCount: 100,
+    attachments: [],
   };
   const reply = (id: string, parentId = root.id, replyCount = 0): Comment => ({
     ...root,

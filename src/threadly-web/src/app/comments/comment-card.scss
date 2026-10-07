@@ -67,6 +67,43 @@ time,
   text-decoration: underline;
 }
 
+.text-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+}
+
+.text-attachments li {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.text-attachment {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  max-width: 21rem;
+}
+
+.text-file-type,
+.attachment-size {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.attachment-size {
+  color: var(--muted);
+}
+
 @media (max-width: 480px) {
   .comment {
     padding: 0.875rem 0.625rem;

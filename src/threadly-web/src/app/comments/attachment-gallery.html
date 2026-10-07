@@ -1,0 +1,93 @@
+<ul
+  class="image-grid"
+  aria-label="Image attachments"
+  [style.grid-template-columns]="'repeat(' + previews().length + ', minmax(0, 1fr))'"
+  [style.width.rem]="previews().length * 5 + (previews().length - 1) * 0.375"
+>
+  @for (image of previews(); track image.id; let index = $index; let last = $last) {
+    <li>
+      <button
+        class="thumbnail"
+        type="button"
+        aria-haspopup="dialog"
+        [attr.aria-label]="
+          'View ' +
+          image.fileName +
+          (last && remainingCount() ? ', and ' + remainingCount() + ' more images' : '')
+        "
+        [title]="image.fileName"
+        (click)="open(index)"
+      >
+        <img
+          [src]="attachmentUrl(image.id)"
+          [alt]="image.fileName"
+          [width]="image.width"
+          [height]="image.height"
+          loading="lazy"
+        />
+        @if (last && remainingCount()) {
+          <span class="more-images" aria-hidden="true">+{{ remainingCount() }}</span>
+        }
+      </button>
+    </li>
+  }
+</ul>
+
+<!-- showModal() provides native dialog focus management without a tabindex. -->
+<!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
+<dialog
+  #viewer
+  class="image-viewer"
+  aria-label="Image viewer"
+  (close)="onClose()"
+  (keydown)="onKeydown($event)"
+  (click)="onBackdropClick($event)"
+>
+  <div class="viewer-heading">
+    <h2 [title]="selectedImage()?.fileName ?? ''">{{ selectedImage()?.fileName }}</h2>
+    <button
+      type="button"
+      class="viewer-button close-button"
+      aria-label="Close image viewer"
+      (click)="close()"
+    >
+      <span aria-hidden="true">×</span>
+    </button>
+  </div>
+  <div class="image-stage" [attr.aria-busy]="imageStatus() === 'loading'">
+    @for (image of selectedImage() ? [selectedImage()!] : []; track image.id) {
+      <img
+        class="full-image"
+        [class.loaded]="imageStatus() === 'loaded'"
+        [src]="attachmentUrl(image.id)"
+        [alt]="image.fileName"
+        [width]="image.width"
+        [height]="image.height"
+        (load)="imageStatus.set('loaded')"
+        (error)="imageStatus.set('error')"
+      />
+    }
+    @if (imageStatus() === 'loading') {
+      <span class="image-message" role="status">Loading image…</span>
+    } @else if (imageStatus() === 'error') {
+      <span class="image-message" role="status">This image could not be loaded.</span>
+    }
+  </div>
+  <div class="viewer-navigation">
+    @if (images().length > 1) {
+      <button type="button" class="viewer-button" aria-label="Previous image" (click)="move(-1)">
+        <span aria-hidden="true">←</span>
+      </button>
+    }
+    <span class="image-counter" aria-live="polite" aria-atomic="true">
+      @if (selectedIndex() !== null) {
+        {{ selectedIndex()! + 1 }} / {{ images().length }}
+      }
+    </span>
+    @if (images().length > 1) {
+      <button type="button" class="viewer-button" aria-label="Next image" (click)="move(1)">
+        <span aria-hidden="true">→</span>
+      </button>
+    }
+  </div>
+</dialog>

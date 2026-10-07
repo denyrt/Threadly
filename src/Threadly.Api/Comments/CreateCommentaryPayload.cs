@@ -4,7 +4,7 @@ using Threadly.Domain.Commentaries;
 
 namespace Threadly.Api.Comments;
 
-public sealed class CreateCommentaryPayload : IValidatableObject
+public class CreateCommentaryPayload : IValidatableObject
 {
     [Required(ErrorMessage = "Username is required.")]
     [StringLength(Commentary.MaxUsernameLength, ErrorMessage = "Username cannot exceed {1} characters.")]

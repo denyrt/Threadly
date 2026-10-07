@@ -3,6 +3,7 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   ElementRef,
   inject,
@@ -37,6 +38,29 @@ export class CommentComposer implements AfterViewInit {
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
   readonly serverErrors = signal<Record<string, string[]>>({});
+  readonly files = signal<File[]>([]);
+  readonly fileErrors = computed(() =>
+    this.files().map((file, index) => {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      if (!extension || !['jpg', 'jpeg', 'png', 'gif', 'txt'].includes(extension)) {
+        return 'Use JPG, PNG, GIF or TXT files.';
+      }
+      if (!file.size) return 'The file is empty.';
+      if (file.size > (extension === 'txt' ? 100 * 1024 : 2 * 1024 * 1024)) {
+        return extension === 'txt'
+          ? 'TXT must be at most 100 KiB.'
+          : 'Images must be at most 2 MiB.';
+      }
+      if (file.name.length > 128) return 'Use a file name of at most 128 characters.';
+      return this.serverErrors()[`attachments[${index}]`]?.[0] ?? null;
+    }),
+  );
+  readonly attachmentsError = computed(() =>
+    this.files().length > 10
+      ? 'Choose at most 10 attachments.'
+      : (this.serverErrors()['attachments']?.[0] ?? null),
+  );
+  readonly hasFileErrors = computed(() => this.fileErrors().some(Boolean));
 
   readonly form = this.formBuilder.group({
     username: [
@@ -49,7 +73,9 @@ export class CommentComposer implements AfterViewInit {
 
   constructor() {
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.serverErrors.set({});
+      this.serverErrors.update((errors) =>
+        Object.fromEntries(Object.entries(errors).filter(([key]) => key.startsWith('attachments'))),
+      );
     });
   }
 
@@ -59,6 +85,28 @@ export class CommentComposer implements AfterViewInit {
 
   fieldId(name: string) {
     return this.parent() ? `reply-${this.parent()!.id}-${name}` : name;
+  }
+
+  selectFiles(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!this.submitting()) {
+      this.files.update((files) => [...files, ...Array.from(input.files ?? [])]);
+      this.clearAttachmentErrors();
+    }
+    input.value = '';
+  }
+
+  removeFile(index: number) {
+    if (this.submitting()) return;
+    this.files.update((files) => files.filter((_, position) => position !== index));
+    this.clearAttachmentErrors();
+  }
+
+  private clearAttachmentErrors() {
+    this.serverErrors.update((errors) =>
+      Object.fromEntries(Object.entries(errors).filter(([key]) => !key.startsWith('attachments'))),
+    );
+    this.error.set(null);
   }
 
   fieldError(field: 'username' | 'email' | 'text'): string | null {
@@ -87,8 +135,9 @@ export class CommentComposer implements AfterViewInit {
     if (this.submitting()) {
       return;
     }
-    if (this.form.invalid) {
+    if (this.form.invalid || this.attachmentsError() || this.fileErrors().some(Boolean)) {
       this.form.markAllAsTouched();
+      this.error.set('Please check the highlighted fields and attachments.');
       return;
     }
 
@@ -102,7 +151,7 @@ export class CommentComposer implements AfterViewInit {
     this.form.disable({ emitEvent: false });
 
     this.api
-      .create(payload)
+      .create(payload, this.files())
       .pipe(
         finalize(() => {
           this.submitting.set(false);
@@ -118,6 +167,14 @@ export class CommentComposer implements AfterViewInit {
             this.serverErrors.set(problem.errors);
             this.error.set(
               problem.errors['parentId']?.[0] ?? 'Please check the highlighted fields.',
+            );
+          } else if (error.status === 413) {
+            this.error.set(
+              'The upload is too large. Use up to 10 images of 2 MiB each, or TXT files of 100 KiB.',
+            );
+          } else if (error.status === 429) {
+            this.error.set(
+              'Uploads are busy. Your files are still selected; please try again shortly.',
             );
           } else {
             this.error.set('Your comment could not be posted. Please try again.');

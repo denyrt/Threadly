@@ -102,10 +102,10 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
 
         using HttpResponseMessage readResponse = await client.GetAsync(location, cancellationToken);
         Assert.Equal(HttpStatusCode.OK, readResponse.StatusCode);
-        Assert.Equal(created, await readResponse.Content.ReadFromJsonAsync<CommentaryDto>(cancellationToken));
+        Assert.Equivalent(created, await readResponse.Content.ReadFromJsonAsync<CommentaryDto>(cancellationToken));
 
         CommentaryPage page = await ReadPageAsync("/api/comments");
-        Assert.Equal(created, Assert.Single(page.Items));
+        Assert.Equivalent(created, Assert.Single(page.Items));
         Assert.Equal(1, page.TotalCount);
     }
 

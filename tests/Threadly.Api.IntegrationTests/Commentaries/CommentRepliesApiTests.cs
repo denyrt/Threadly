@@ -39,7 +39,7 @@ public sealed partial class CommentsApiTests
         Assert.Equal(new[] { reply.Id, sibling.Id }, children.Items.Select(item => item.Id));
         Assert.Equal(1, children.Items[0].ReplyCount);
         Assert.Null(children.NextCursor);
-        Assert.Equal(grandchild, Assert.Single((await ReadRepliesAsync(reply.Id)).Items));
+        Assert.Equivalent(grandchild, Assert.Single((await ReadRepliesAsync(reply.Id)).Items));
     }
 
     [Theory]

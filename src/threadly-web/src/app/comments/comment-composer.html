@@ -56,6 +56,50 @@
         >
       </div>
     </div>
+    <div class="field attachment-picker">
+      <label [for]="fieldId('attachments')">Attachments ({{ files().length }} / 10)</label>
+      <input
+        [id]="fieldId('attachments')"
+        type="file"
+        multiple
+        accept=".jpg,.jpeg,.png,.gif,.txt"
+        [disabled]="submitting()"
+        (change)="selectFiles($event)"
+        [attr.aria-invalid]="!!attachmentsError() || hasFileErrors()"
+        [attr.aria-describedby]="fieldId('attachments-help') + ' ' + fieldId('attachments-error')"
+      />
+      <span class="muted" [id]="fieldId('attachments-help')">
+        JPG, PNG or GIF up to 2 MiB; UTF-8 TXT up to 100 KiB. Images are resized to fit 320 × 240.
+        GIF: up to 100 frames and 16 million decoded pixels. All files must pass validation to post.
+      </span>
+      @if (files().length) {
+        <ul class="selected-files" aria-label="Selected attachments">
+          @for (file of files(); track $index) {
+            <li>
+              <div class="file-description">
+                <span class="file-name">{{ file.name }}</span>
+                <span class="muted">{{ (file.size / 1024).toFixed(1) }} KiB</span>
+                @if (fileErrors()[$index]) {
+                  <span class="field-error" role="alert">{{ fileErrors()[$index] }}</span>
+                }
+              </div>
+              <button
+                class="button quiet"
+                type="button"
+                (click)="removeFile($index)"
+                [disabled]="submitting()"
+                [attr.aria-label]="'Remove ' + file.name"
+              >
+                Remove
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      <span class="field-error" [id]="fieldId('attachments-error')" aria-live="polite">{{
+        attachmentsError()
+      }}</span>
+    </div>
     @if (error()) {
       <p class="error-message" role="alert">{{ error() }}</p>
     }

@@ -12,6 +12,26 @@
     </header>
     <span class="email">{{ comment().email }}</span>
     <p class="text">{{ comment().text }}</p>
+    @if (images().length) {
+      <app-attachment-gallery [commentId]="comment().id" [images]="images()" />
+    }
+    @if (textFiles().length) {
+      <ul class="text-attachments" aria-label="Text attachments">
+        @for (attachment of textFiles(); track attachment.id) {
+          <li>
+            <a
+              class="text-attachment"
+              [href]="attachmentUrl(attachment.id)"
+              [download]="attachment.fileName"
+            >
+              <span class="text-file-type" aria-hidden="true">↓ TXT</span>
+              <span>{{ attachment.fileName }}</span>
+              <span class="attachment-size">{{ (attachment.size / 1024).toFixed(1) }} KiB</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
     @if (!detail()) {
       <a class="permalink" [routerLink]="['/comments', comment().id]"
         >View comment <span aria-hidden="true">↗</span></a
