@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Threadly.Domain.Commentaries;
@@ -28,9 +29,16 @@ internal sealed class CommentaryConfiguration : IEntityTypeConfiguration<Comment
             .IsRequired()
             .HasMaxLength(Commentary.MaxEmailLength);
 
-        builder.Property(commentary => commentary.Text)
-            .IsRequired()
-            .HasMaxLength(Commentary.MaxTextLength);
+        builder.Property(commentary => commentary.Content)
+            .HasConversion(value => ContentJson.Serialize(value), value => ContentJson.Deserialize(value),
+                new ValueComparer<IReadOnlyList<TextContentBlock>>(
+                    (left, right) => left!.SequenceEqual(right!),
+                    value => value.Aggregate(0, (hash, block) => HashCode.Combine(hash, block)),
+                    value => value.ToArray()))
+            .HasColumnType("nvarchar(max)")
+            .IsRequired();
+        builder.ToTable("Commentaries", table => table.HasCheckConstraint("CK_Commentaries_Content_Json",
+            "ISJSON([Content], ARRAY) = 1 AND DATALENGTH([Content]) <= 524288"));
 
         builder.Property(commentary => commentary.CreatedAtUtc)
             .IsRequired()

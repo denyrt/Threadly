@@ -79,7 +79,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
         {
             username = "Denis42",
             email = "Denis@Example.com",
-            text = "  Привіт, світе! 🧵\nДругий рядок.  ",
+            content = new[] { new { type = "text", html = "  Привіт, світе! 🧵\nДругий рядок.  " } },
             id = suppliedId,
             createdAtUtc = "2000-01-01T00:00:00Z"
         }, cancellationToken);
@@ -93,7 +93,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
         Assert.Equal(0, created.ReplyCount);
         Assert.Equal("Denis42", created.Username);
         Assert.Equal("Denis@Example.com", created.Email);
-        Assert.Equal("Привіт, світе! 🧵\nДругий рядок.", created.Text);
+        Assert.Equal("  Привіт, світе! 🧵\nДругий рядок.  ", created.Content[0].Html);
         Assert.Equal(DateTimeKind.Utc, created.CreatedAtUtc.Kind);
         Assert.InRange(created.CreatedAtUtc, beforeCreate, DateTime.UtcNow);
 
@@ -120,9 +120,9 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
         { "Denis", "   ", "Text", "email", "Email is required." },
         { "Denis", "invalid", "Text", "email", "Email must be a valid email address." },
         { "Denis", new string('x', 243) + "@example.com", "Text", "email", "Email cannot exceed 254 characters." },
-        { "Denis", "denis@example.com", null, "text", "Text is required." },
-        { "Denis", "denis@example.com", "   ", "text", "Text is required." },
-        { "Denis", "denis@example.com", new string('x', 2001), "text", "Text cannot exceed 2000 characters." }
+        { "Denis", "denis@example.com", null, "content", "Each text block requires html." },
+        { "Denis", "denis@example.com", "   ", "content", "Content must include visible, non-whitespace text." },
+        { "Denis", "denis@example.com", new string('x', 2001), "content", "Message budget cannot exceed 2000 units." }
     };
 
     [Theory]
@@ -132,7 +132,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         using HttpResponseMessage response = await client.PostAsJsonAsync(
-            "/api/comments", new { username, email, text }, cancellationToken);
+            "/api/comments", new { username, email, content = new[] { new { type = "text", html = text } } }, cancellationToken);
 
         ValidationProblemDetails problem = await ReadValidationProblemAsync(response);
         Assert.Contains(message, problem.Errors[field]);
@@ -147,7 +147,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
             "/api/comments", new { }, TestContext.Current.CancellationToken);
 
         ValidationProblemDetails problem = await ReadValidationProblemAsync(response);
-        Assert.Equal(new[] { "email", "text", "username" }, problem.Errors.Keys.Order());
+        Assert.Equal(new[] { "content", "email", "username" }, problem.Errors.Keys.Order());
         Assert.Empty((await ReadPageAsync("/api/comments")).Items);
     }
 
@@ -170,11 +170,11 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
         string username = new('a', Commentary.MaxUsernameLength);
         string email = new string('a', 64) + "@" + new string('b', 63) + "."
             + new string('c', 63) + "." + new string('d', 57) + ".com";
-        string text = new('x', Commentary.MaxTextLength);
+        string text = new('x', 2000);
         Assert.Equal(Commentary.MaxEmailLength, email.Length);
 
         using HttpResponseMessage response = await client.PostAsJsonAsync(
-            "/api/comments", new { username, email, text }, TestContext.Current.CancellationToken);
+            "/api/comments", new { username, email, content = new[] { new { type = "text", html = text } } }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -241,15 +241,15 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
             ThreadlyDbContext context = scope.ServiceProvider.GetRequiredService<ThreadlyDbContext>();
             for (int index = 0; index < 56; index++)
             {
-                Commentary commentary = new("Denis", "denis@example.com", $"Comment {index}",
+                Commentary commentary = new("Denis", "denis@example.com", [new TextContentBlock($"Comment {index}")],
                     index == 0 ? timestamp.AddDays(1) : timestamp);
                 context.Commentaries.Add(commentary);
                 context.Entry(commentary).Property(value => value.Id).CurrentValue = KnownId(index);
             }
 
-            Commentary reply = new("Reader", "reader@example.com", "Reply excluded from root pages", timestamp, KnownId(0));
+            Commentary reply = new("Reader", "reader@example.com", [new TextContentBlock("Reply excluded from root pages")], timestamp, KnownId(0));
             context.Add(reply);
-            context.Add(new Commentary("Reader", "reader@example.com", "Nested reply excluded too", timestamp, reply.Id));
+            context.Add(new Commentary("Reader", "reader@example.com", [new TextContentBlock("Nested reply excluded too")], timestamp, reply.Id));
 
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         }

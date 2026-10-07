@@ -3,10 +3,11 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { RouterLink } from '@angular/router';
 import { AttachmentGallery } from './attachment-gallery';
 import { Comment } from './comment.models';
+import { CommentBody } from './comment-body';
 
 @Component({
   selector: 'app-comment-card',
-  imports: [DatePipe, RouterLink, AttachmentGallery],
+  imports: [DatePipe, RouterLink, AttachmentGallery, CommentBody],
   templateUrl: './comment-card.html',
   styleUrl: './comment-card.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

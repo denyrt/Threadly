@@ -39,7 +39,7 @@ public sealed class MigrationWorkerTests(SqlServerFixture sqlServer) : IAsyncLif
         Commentary commentary = new(
             "Denis",
             "denis@example.com",
-            "Saved data",
+            [new TextContentBlock("Saved data")],
             DateTime.UtcNow);
 
         await using (ThreadlyDbContext dbContext = CreateContext())
@@ -58,7 +58,7 @@ public sealed class MigrationWorkerTests(SqlServerFixture sqlServer) : IAsyncLif
         Commentary reloaded = await readContext.Commentaries.SingleAsync(cancellationToken);
 
         Assert.Equal(commentary.Id, reloaded.Id);
-        Assert.Equal(commentary.Text, reloaded.Text);
+        Assert.Equal(commentary.Content[0].Html, reloaded.Content[0].Html);
         Assert.Equal(commentary.CreatedAtUtc, reloaded.CreatedAtUtc);
     }
 

@@ -73,7 +73,7 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
         Commentary commentary = new(
             "Denis",
             "denis@example.com",
-            "Привіт, світе! 🧵",
+            [new TextContentBlock("Привіт, світе! 🧵")],
             new DateTime(2026, 10, 4, 12, 34, 56, DateTimeKind.Utc).AddTicks(1234567));
 
         await using (AsyncServiceScope scope = GetFactory().Services.CreateAsyncScope())
@@ -93,7 +93,7 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
         Assert.Equal(commentary.Id, reloaded.Id);
         Assert.Equal(commentary.Username, reloaded.Username);
         Assert.Equal(commentary.Email, reloaded.Email);
-        Assert.Equal(commentary.Text, reloaded.Text);
+        Assert.Equal(commentary.Content[0].Html, reloaded.Content[0].Html);
         Assert.Equal(commentary.CreatedAtUtc, reloaded.CreatedAtUtc);
         Assert.Equal(DateTimeKind.Utc, reloaded.CreatedAtUtc.Kind);
     }
@@ -101,11 +101,10 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
     [Theory]
     [InlineData(nameof(Commentary.Username), Commentary.MaxUsernameLength)]
     [InlineData(nameof(Commentary.Email), Commentary.MaxEmailLength)]
-    [InlineData(nameof(Commentary.Text), Commentary.MaxTextLength)]
     public async Task SaveChangesAsync_RejectsValuesExceedingDatabaseLimits(string propertyName, int maxLength)
     {
         await using ThreadlyDbContext context = CreateContext();
-        Commentary commentary = new("Denis", "denis@example.com", "Commentary", DateTime.UtcNow);
+        Commentary commentary = new("Denis", "denis@example.com", [new TextContentBlock("Commentary")], DateTime.UtcNow);
         context.Commentaries.Add(commentary);
         context.Entry(commentary).Property<string>(propertyName).CurrentValue = new string('x', maxLength + 1);
 
@@ -141,9 +140,24 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
         Assert.Equal(id, comment.Id);
         Assert.Equal("Reader", comment.Username);
         Assert.Equal("reader@example.com", comment.Email);
-        Assert.Equal("Existing comment 🧵", comment.Text);
+        Assert.Equal("Existing comment 🧵", comment.Content[0].Html);
         Assert.Equal(timestamp, comment.CreatedAtUtc);
         Assert.Null(comment.ParentId);
+    }
+
+    [Fact]
+    public async Task ContentMigrationEscapesExistingTextWithoutTruncation()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ThreadlyDbContext context = CreateContext();
+        await context.GetService<IMigrator>().MigrateAsync("20261006133517_AddCommentaryAttachments", token);
+        string text = new string('&', 1980) + "<i>plain</i> 🧵";
+        Guid id = Guid.NewGuid();
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO Commentaries (Id, Username, Email, Text, CreatedAtUtc) VALUES ({id}, {"Reader"}, {"reader@example.com"}, {text}, {DateTime.UtcNow})", token);
+        await context.Database.MigrateAsync(token);
+        Commentary stored = await context.Commentaries.SingleAsync(token);
+        Assert.Equal(text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;"), stored.Content[0].Html);
     }
 
     [Fact]
@@ -151,8 +165,8 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         await using ThreadlyDbContext context = CreateContext();
-        Commentary parent = new("Reader", "reader@example.com", "Parent", DateTime.UtcNow);
-        Commentary reply = new("Reader", "reader@example.com", "Reply", DateTime.UtcNow, parent.Id);
+        Commentary parent = new("Reader", "reader@example.com", [new TextContentBlock("Parent")], DateTime.UtcNow);
+        Commentary reply = new("Reader", "reader@example.com", [new TextContentBlock("Reply")], DateTime.UtcNow, parent.Id);
         context.AddRange(parent, reply);
         await context.SaveChangesAsync(token);
 

@@ -15,7 +15,7 @@ describe('Comments', () => {
     id: '019abcde-1234-7000-8000-123456789abc',
     username: 'Denis42',
     email: 'denis@example.com',
-    text: 'Hello, Threadly!\nA second line.',
+    content: [{ type: 'text', html: 'Hello, Threadly!\nA second line.' }],
     createdAtUtc: '2026-10-05T10:30:00Z',
     parentId: null,
     replyCount: 0,
@@ -90,7 +90,7 @@ describe('Comments', () => {
   function fillValidComment() {
     fillField('username', comment.username);
     fillField('email', comment.email);
-    fillField('text', comment.text);
+    fillField('text', comment.content[0].html);
   }
 
   it('shows loading and an empty feed', async () => {
@@ -106,7 +106,7 @@ describe('Comments', () => {
   it('loads a requested page and navigates to the next page', async () => {
     await openFeed(1, [comment], 26);
     expect(button('Previous').disabled).toBe(true);
-    expect(element().textContent).toContain(comment.text);
+    expect(element().textContent).toContain(comment.content[0].html);
     expect(element().querySelector('.permalink')?.getAttribute('href')).toBe(
       `/comments/${comment.id}`,
     );
@@ -114,7 +114,11 @@ describe('Comments', () => {
     button('Next').click();
     await render();
     expect(TestBed.inject(Router).url).toBe('/comments?page=2');
-    respondWithPage(2, [{ ...comment, id: 'second', text: 'Second page' }], 26);
+    respondWithPage(
+      2,
+      [{ ...comment, id: 'second', content: [{ type: 'text', html: 'Second page' }] }],
+      26,
+    );
     await render();
     expect(element().textContent).toContain('Second page');
     expect(element().textContent).not.toContain('Hello, Threadly!');
@@ -143,7 +147,7 @@ describe('Comments', () => {
     respondWithPage(1, [comment]);
     await render();
     expect(element().querySelector('[role="alert"]')).toBeNull();
-    expect(element().textContent).toContain(comment.text);
+    expect(element().textContent).toContain(comment.content[0].html);
   });
 
   it('validates fields locally and does not post invalid or whitespace-only text', async () => {
@@ -212,9 +216,14 @@ describe('Comments', () => {
     submitForm();
 
     const post = http.expectOne({ method: 'POST', url: '/api/comments' });
-    expect(post.request.body).toEqual(values);
-    post.flush({ ...comment, ...values });
-    respondWithPage(1, [{ ...comment, ...values }]);
+    const payload = {
+      username: values.username,
+      email: values.email,
+      content: [{ type: 'text' as const, html: values.text }],
+    };
+    expect(post.request.body).toEqual(payload);
+    post.flush({ ...comment, ...payload });
+    respondWithPage(1, [{ ...comment, ...payload }]);
     await render();
     expect(element().textContent).toContain('Comment posted.');
   });
@@ -230,7 +239,7 @@ describe('Comments', () => {
     expect(post.request.body).toEqual({
       username: comment.username,
       email: comment.email,
-      text: comment.text,
+      content: comment.content,
     });
     expect(button('Posting…').disabled).toBe(true);
     expect(button('Cancel').disabled).toBe(true);
@@ -262,7 +271,9 @@ describe('Comments', () => {
     expect(element().querySelector('#email-error')?.textContent).toContain(
       'rejected by the server',
     );
-    expect((element().querySelector('#text') as HTMLTextAreaElement).value).toBe(comment.text);
+    expect((element().querySelector('#text') as HTMLTextAreaElement).value).toBe(
+      comment.content[0].html,
+    );
 
     fillField('email', 'new@example.com');
     submitForm();
@@ -286,23 +297,25 @@ describe('Comments', () => {
     await render();
 
     expect(element().querySelector('[role="alert"]')?.textContent).toContain('could not be posted');
-    expect((element().querySelector('#text') as HTMLTextAreaElement).value).toBe(comment.text);
+    expect((element().querySelector('#text') as HTMLTextAreaElement).value).toBe(
+      comment.content[0].html,
+    );
     expect((element().querySelector('#text') as HTMLTextAreaElement).disabled).toBe(false);
     expect(button('Post comment').disabled).toBe(false);
   });
 
-  it('reads a comment by its URL and displays markup as plain text', async () => {
+  it('reads a comment by its URL and renders allowed markup', async () => {
     await harness.navigateByUrl(`/comments/${comment.id}`);
     expect(element().textContent).toContain('Loading comment…');
     http.expectOne({ method: 'GET', url: `/api/comments/${comment.id}` }).flush({
       ...comment,
-      text: '<strong>This is text</strong>\nSecond line',
+      content: [{ type: 'text', html: '<strong>This is text</strong>\nSecond line' }],
     });
     await render();
 
     const text = element().querySelector('.text') as HTMLElement;
-    expect(text.textContent).toBe('<strong>This is text</strong>\nSecond line');
-    expect(text.querySelector('strong')).toBeNull();
+    expect(text.textContent).toBe('This is text\nSecond line');
+    expect(text.querySelector('strong')?.textContent).toBe('This is text');
     expect(element().querySelector('time')?.getAttribute('datetime')).toBe(comment.createdAtUtc);
     expect(element().querySelector('.permalink')).toBeNull();
   });
@@ -324,7 +337,9 @@ describe('Comments', () => {
     const previous = http.expectOne(`/api/comments/${comment.id}`);
     await harness.navigateByUrl('/comments/next');
     expect(previous.cancelled).toBe(true);
-    http.expectOne('/api/comments/next').flush({ ...comment, id: 'next', text: 'Current comment' });
+    http
+      .expectOne('/api/comments/next')
+      .flush({ ...comment, id: 'next', content: [{ type: 'text', html: 'Current comment' }] });
     await render();
     expect(element().textContent).toContain('Current comment');
   });

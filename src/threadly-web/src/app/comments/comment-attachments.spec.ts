@@ -13,7 +13,7 @@ describe('Comment attachments', () => {
     id: 'root',
     username: 'Reader',
     email: 'reader@example.com',
-    text: 'A comment',
+    content: [{ type: 'text', html: 'A comment' }],
     createdAtUtc: '2026-10-06T12:00:00Z',
     parentId: null,
     replyCount: 0,
@@ -29,7 +29,7 @@ describe('Comment attachments', () => {
     fixture.componentInstance.form.setValue({
       username: comment.username,
       email: comment.email,
-      text: comment.text,
+      text: comment.content[0].html,
     });
     await fixture.whenStable();
   });
@@ -107,7 +107,7 @@ describe('Comment attachments', () => {
     expect(body).toBeInstanceOf(FormData);
     expect(body.get('username')).toBe(comment.username);
     expect(body.get('email')).toBe(comment.email);
-    expect(body.get('text')).toBe(comment.text);
+    expect(body.get('content')).toBe(JSON.stringify(comment.content));
     expect(body.get('parentId')).toBe(reply ? comment.id : null);
     expect(body.getAll('attachments').map((value) => (value as File).name)).toEqual([
       'notes.txt',
@@ -140,7 +140,9 @@ describe('Comment attachments', () => {
     await select([file()]);
     submit();
     const retry = http.expectOne('/api/comments');
-    expect((retry.request.body as FormData).get('text')).toBe('Edited comment');
+    expect((retry.request.body as FormData).get('content')).toBe(
+      JSON.stringify([{ type: 'text', html: 'Edited comment' }]),
+    );
     retry.flush(comment);
   });
 
@@ -152,7 +154,7 @@ describe('Comment attachments', () => {
       http.expectOne('/api/comments').flush({}, { status, statusText: 'Failed' });
       await fixture.whenStable();
       expect(fixture.componentInstance.files()).toHaveLength(1);
-      expect(fixture.componentInstance.form.controls.text.value).toBe(comment.text);
+      expect(fixture.componentInstance.form.controls.text.value).toBe(comment.content[0].html);
       expect(fixture.componentInstance.form.enabled).toBe(true);
       expect(element().querySelector('.error-message')?.textContent).toBeTruthy();
       expect((element().querySelector('input[type="file"]') as HTMLInputElement).disabled).toBe(

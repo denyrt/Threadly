@@ -69,7 +69,7 @@ public sealed class MigrationStartupTests
         {
             username = "Denis",
             email = "denis@example.com",
-            text = "Created after AppHost migrations."
+            content = new[] { new { type = "text", html = "Created after AppHost migrations." } }
         }, cancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);

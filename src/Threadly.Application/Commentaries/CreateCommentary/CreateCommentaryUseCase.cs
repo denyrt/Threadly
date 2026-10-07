@@ -1,15 +1,17 @@
 using Threadly.Application.Commentaries.Attachments;
+using Threadly.Application.Commentaries.Content;
 using Threadly.Domain.Commentaries;
 
 namespace Threadly.Application.Commentaries.CreateCommentary;
 
 public sealed class CreateCommentaryUseCase(
-    ICommentaryRepository repository, TimeProvider timeProvider, IAttachmentProcessor attachmentProcessor)
+    ICommentaryRepository repository, TimeProvider timeProvider, IAttachmentProcessor attachmentProcessor, IContentProcessor contentProcessor)
 {
     public async Task<CommentaryDto> ExecuteAsync(CreateCommentaryInput input, CancellationToken cancellationToken)
     {
+        ProcessedContent processed = contentProcessor.Process(input.Content);
         Commentary commentary = new(
-            input.Username, input.Email, input.Text, timeProvider.GetUtcNow().UtcDateTime, input.ParentId);
+            input.Username, input.Email, processed.Content, timeProvider.GetUtcNow().UtcDateTime, input.ParentId);
 
         if (input.ParentId is Guid parentId && !await repository.ExistsAsync(parentId, cancellationToken))
         {

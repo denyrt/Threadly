@@ -40,11 +40,70 @@
     </div>
     <div class="field">
       <label [for]="fieldId('text')">Comment</label>
+      <div class="format-toolbar" role="group" aria-label="Comment formatting">
+        <button class="button quiet" type="button" (click)="format('i')" [disabled]="submitting()">
+          Italic
+        </button>
+        <button
+          class="button quiet"
+          type="button"
+          (click)="format('strong')"
+          [disabled]="submitting()"
+        >
+          Bold
+        </button>
+        <button
+          class="button quiet"
+          type="button"
+          (click)="format('code')"
+          [disabled]="submitting()"
+        >
+          Code
+        </button>
+        <button
+          class="button quiet"
+          type="button"
+          (click)="openLink()"
+          [disabled]="submitting()"
+          [attr.aria-expanded]="linkOpen()"
+        >
+          Link
+        </button>
+      </div>
+      @if (linkOpen()) {
+        <div class="link-editor">
+          <label [for]="fieldId('link-url')">Link URL</label>
+          <input
+            #linkUrl
+            [id]="fieldId('link-url')"
+            type="url"
+            placeholder="https://example.com"
+            [disabled]="submitting()"
+            (keydown.enter)="$event.preventDefault(); insertLink(linkUrl.value)"
+            [attr.aria-invalid]="!!linkError()"
+            [attr.aria-describedby]="fieldId('link-error')"
+          />
+          <button
+            class="button quiet"
+            type="button"
+            (click)="insertLink(linkUrl.value)"
+            [disabled]="submitting()"
+          >
+            Insert link
+          </button>
+          <button class="button quiet" type="button" (click)="linkOpen.set(false)">
+            Cancel link
+          </button>
+          <span class="field-error" [id]="fieldId('link-error')" role="alert">{{
+            linkError()
+          }}</span>
+        </div>
+      }
       <textarea
+        #textInput
         [id]="fieldId('text')"
         formControlName="text"
         rows="4"
-        maxlength="2000"
         placeholder="What's on your mind?"
         [attr.aria-invalid]="!!fieldError('text')"
         [attr.aria-describedby]="fieldId('text-error') + ' ' + fieldId('text-count')"
@@ -52,10 +111,33 @@
       <div class="text-feedback">
         <span class="field-error" [id]="fieldId('text-error')">{{ fieldError('text') }}</span>
         <span class="muted" [id]="fieldId('text-count')"
-          >{{ form.controls.text.value.length }} / 2000</span
+          >Message budget: {{ form.controls.text.value.length }} / 2000</span
         >
       </div>
+      <span class="muted">Includes formatting markup.</span>
     </div>
+    <div class="preview-actions">
+      <button
+        class="button secondary"
+        type="button"
+        (click)="preview()"
+        [disabled]="submitting() || previewLoading()"
+      >
+        {{ previewLoading() ? 'Loading preview…' : 'Preview' }}
+      </button>
+    </div>
+    @if (previewError()) {
+      <p class="error-message" role="alert">{{ previewError() }}</p>
+    }
+    @if (previewResult(); as result) {
+      <section class="preview" aria-label="Comment preview" aria-live="polite">
+        <h3>Preview</h3>
+        <app-comment-body [content]="result.content" />
+        <span class="muted"
+          >Message budget: {{ result.budgetUsed }} / {{ result.budgetLimit }}</span
+        >
+      </section>
+    }
     <div class="field attachment-picker">
       <label [for]="fieldId('attachments')">Attachments ({{ files().length }} / 10)</label>
       <input

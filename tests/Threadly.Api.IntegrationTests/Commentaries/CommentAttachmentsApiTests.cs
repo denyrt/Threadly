@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.RegularExpressions;
 using Threadly.Application.Commentaries;
 using Threadly.Application.Commentaries.Attachments;
 using Threadly.Domain.Commentaries;
@@ -73,7 +74,14 @@ public sealed partial class CommentsApiTests
         CommentaryDto readRoot = (await client.GetFromJsonAsync<CommentaryDto>($"/api/comments/{root.Id}", TestContext.Current.CancellationToken))!;
         Assert.Equivalent(root.Attachments, readRoot.Attachments);
         Assert.Equivalent(root.Attachments, Assert.Single((await ReadPageAsync("/api/comments")).Items).Attachments);
-        Assert.DoesNotContain(queries.Commands, command => command.Sql.Contains("[Content]", StringComparison.Ordinal));
+        // Content now also names comment JSON. Check the attachment table's actual SQL aliases.
+        foreach (var command in queries.Commands)
+        {
+            foreach (Match alias in Regex.Matches(command.Sql, @"\b(?:FROM|JOIN) \[CommentaryAttachments\] AS (\[[^\]]+\])"))
+            {
+                Assert.DoesNotContain(alias.Groups[1].Value + ".[Content]", command.Sql, StringComparison.Ordinal);
+            }
+        }
 
         using HttpResponseMessage downloaded = await client.GetAsync(AttachmentPath(root, 1), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, downloaded.StatusCode);
@@ -142,11 +150,11 @@ public sealed partial class CommentsApiTests
         using MultipartFormDataContent badText = new();
         badText.Add(new StringContent("Bad user!"), "username");
         badText.Add(new StringContent("invalid"), "email");
-        badText.Add(new StringContent(" "), "text");
+        badText.Add(new StringContent(" "), "content");
         AddFile(badText, "valid.txt", "text"u8.ToArray());
         using HttpResponseMessage invalidText = await client.PostAsync("/api/comments", badText, TestContext.Current.CancellationToken);
         ValidationProblemDetails problem = await ReadValidationProblemAsync(invalidText);
-        Assert.Equal(new[] { "email", "text", "username" }, problem.Errors.Keys.Order());
+        Assert.Equal(new[] { "content", "email", "username" }, problem.Errors.Keys.Order());
 
         using MultipartFormDataContent badParent = CommentForm(Guid.NewGuid());
         AddFile(badParent, "valid.txt", "text"u8.ToArray());
@@ -165,7 +173,7 @@ public sealed partial class CommentsApiTests
     {
         await using (ThreadlyDbContext context = CreateContext())
         {
-            Commentary comment = new("Reader", "reader@example.com", "Atomic insert", DateTime.UtcNow);
+            Commentary comment = new("Reader", "reader@example.com", [new TextContentBlock("Atomic insert")], DateTime.UtcNow);
             comment.AddAttachment("first.txt", "text/plain", "first"u8.ToArray(), null, null);
             comment.AddAttachment("second.txt", "text/plain", "second"u8.ToArray(), null, null);
             context.Add(comment);
@@ -197,7 +205,7 @@ public sealed partial class CommentsApiTests
         MultipartFormDataContent form = new();
         form.Add(new StringContent("Reader"), "username");
         form.Add(new StringContent("reader@example.com"), "email");
-        form.Add(new StringContent("Comment with files 🧵"), "text");
+        form.Add(new StringContent("[{\"type\":\"text\",\"html\":\"<i>Comment with files 🧵</i>\"}]"), "content");
         if (parent is not null) form.Add(new StringContent(parent.Value.ToString()), "parentId");
         return form;
     }

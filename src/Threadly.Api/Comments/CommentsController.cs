@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Threadly.Application.Commentaries;
 using Threadly.Application.Commentaries.Attachments;
+using Threadly.Application.Commentaries.Content;
 using Threadly.Application.Commentaries.CreateCommentary;
 using Threadly.Application.Commentaries.GetCommentaries;
 using Threadly.Application.Commentaries.GetCommentaryById;
@@ -17,8 +18,16 @@ public sealed class CommentsController(
     GetCommentaryByIdUseCase getCommentaryById,
     GetCommentariesUseCase getCommentaries,
     GetCommentaryRepliesUseCase getCommentaryReplies,
-    IAttachmentRepository attachmentRepository) : ControllerBase
+    IAttachmentRepository attachmentRepository, IContentProcessor contentProcessor) : ControllerBase
 {
+    [HttpPost("preview")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(ContentLimits.JsonFieldLength)]
+    [ProducesResponseType<ProcessedContent>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public ActionResult<ProcessedContent> Preview([FromBody] PreviewCommentaryPayload payload) =>
+        Ok(contentProcessor.Process(payload.Content));
+
     [HttpPost]
     [Consumes("application/json")]
     [RequestSizeLimit(AttachmentLimits.MaxRequestBytes)]
@@ -38,7 +47,7 @@ public sealed class CommentsController(
     [EnableRateLimiting("uploads")]
     [RequestSizeLimit(AttachmentLimits.MaxRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = AttachmentLimits.MaxRequestBytes, ValueCountLimit = 14,
-        ValueLengthLimit = 8192, KeyLengthLimit = 128, MultipartHeadersLengthLimit = 4096)]
+        ValueLengthLimit = ContentLimits.JsonFieldLength, KeyLengthLimit = 128, MultipartHeadersLengthLimit = 4096)]
     [ProducesResponseType<CommentaryDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status413PayloadTooLarge)]

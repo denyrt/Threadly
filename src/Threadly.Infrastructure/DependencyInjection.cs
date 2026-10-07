@@ -3,7 +3,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Threadly.Application.Commentaries;
 using Threadly.Application.Commentaries.Attachments;
+using Threadly.Application.Commentaries.Content;
 using Threadly.Infrastructure.Attachments;
+using Threadly.Infrastructure.Content;
 using Threadly.Infrastructure.Persistence;
 using Threadly.Infrastructure.Persistence.Repositories;
 
@@ -18,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<ICommentaryRepository, CommentaryRepository>();
         services.AddScoped<IAttachmentRepository, AttachmentRepository>();
         services.AddSingleton<IAttachmentProcessor, AttachmentProcessor>();
+        services.AddSingleton<IContentProcessor, ContentProcessor>();
 
         services.AddDbContext<ThreadlyDbContext>((provider, options) =>
         {

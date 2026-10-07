@@ -17,7 +17,7 @@ describe('Comment replies', () => {
     id: 'root',
     username: 'Reader',
     email: 'reader@example.com',
-    text: 'Root comment',
+    content: [{ type: 'text', html: 'Root comment' }],
     createdAtUtc: '2026-10-05T12:00:00.1234567Z',
     parentId: null,
     replyCount: 100,
@@ -28,7 +28,7 @@ describe('Comment replies', () => {
     id,
     parentId,
     replyCount,
-    text: `Reply ${id}`,
+    content: [{ type: 'text', html: `Reply ${id}` }],
   });
 
   beforeEach(async () => {
@@ -123,7 +123,10 @@ describe('Comment replies', () => {
   });
 
   it('isolates branch failures and retries the same cursor without losing loaded children', async () => {
-    await openFeed([root, { ...root, id: 'other', replyCount: 1, text: 'Other root' }]);
+    await openFeed([
+      root,
+      { ...root, id: 'other', replyCount: 1, content: [{ type: 'text', html: 'Other root' }] },
+    ]);
     button('Show replies (100)').click();
     flushReplies(root.id, [reply('one')], 'next');
     await render();
