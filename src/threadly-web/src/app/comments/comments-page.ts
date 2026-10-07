@@ -11,11 +11,26 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, combineLatest, finalize, of, startWith, Subject, switchMap } from 'rxjs';
+import {
+  catchError,
+  combineLatest,
+  EMPTY,
+  finalize,
+  of,
+  startWith,
+  Subject,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { CommentThread } from './comment-thread';
 import { CommentViewState } from './comment-view-state';
 import { CommentComposer } from './comment-composer';
-import { CommentPage } from './comment.models';
+import {
+  CommentFeedQuery,
+  CommentPage,
+  CommentSortBy,
+  CommentSortDirection,
+} from './comment.models';
 import { CommentsApi } from './comments-api';
 
 @Component({
@@ -36,6 +51,9 @@ export class CommentsPage implements OnInit {
     viewChild.required<ElementRef<HTMLButtonElement>>('composeButton');
 
   readonly page = signal(1);
+  readonly sortBy = signal<CommentSortBy>('date');
+  readonly sortDirection = signal<CommentSortDirection>('desc');
+  readonly viewVersion = signal(0);
   readonly result = signal<CommentPage | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -50,25 +68,68 @@ export class CommentsPage implements OnInit {
     combineLatest([this.route.queryParamMap, this.refresh.pipe(startWith(undefined))])
       .pipe(
         switchMap(([params]) => {
-          const page = Number(params.get('page') ?? 1);
-          this.page.set(Number.isInteger(page) && page > 0 && page <= 2147483647 ? page : 1);
+          const rawPage = params.get('page');
+          const page = Number(rawPage ?? 1);
+          const validPage =
+            rawPage === null ||
+            (params.getAll('page').length === 1 &&
+              /^\d+$/.test(rawPage) &&
+              Number.isInteger(page) &&
+              page > 0 &&
+              page <= 2147483647);
+          const sortBy = params.get('sortBy');
+          const validSortBy =
+            sortBy === null ||
+            (params.getAll('sortBy').length === 1 &&
+              (sortBy === 'date' || sortBy === 'username' || sortBy === 'email'));
+          const sortDirection = params.get('sortDirection');
+          const validSortDirection =
+            sortDirection === null ||
+            (params.getAll('sortDirection').length === 1 &&
+              (sortDirection === 'asc' || sortDirection === 'desc'));
+          const query: CommentFeedQuery = {
+            page: validPage ? page : 1,
+            sortBy: validSortBy && sortBy !== null ? (sortBy as CommentSortBy) : 'date',
+            sortDirection:
+              validSortDirection && sortDirection !== null
+                ? (sortDirection as CommentSortDirection)
+                : 'desc',
+          };
+          if (!validPage || !validSortBy || !validSortDirection) {
+            void this.router.navigate(['/comments'], {
+              queryParams: query,
+              queryParamsHandling: 'merge',
+              replaceUrl: true,
+            });
+            return EMPTY;
+          }
+
+          this.page.set(query.page);
+          this.sortBy.set(query.sortBy);
+          this.sortDirection.set(query.sortDirection);
+          const view = this.views.selectFeed(query);
+          // Recreate cards across history entries, even if they contain the same comment IDs.
+          this.viewVersion.update((version) => version + 1);
+          this.result.set(null);
           this.loading.set(true);
           this.error.set(null);
 
           return (
-            this.views.current.page ? of(this.views.current.page) : this.api.getPage(this.page())
+            view.page
+              ? of(view.page)
+              : this.api.getPage(query.page, query.sortBy, query.sortDirection)
           ).pipe(
             catchError(() => {
               this.error.set('Comments could not be loaded. Please try again.');
               return of(null);
             }),
+            tap((result) => (view.page = result)),
             finalize(() => this.loading.set(false)),
           );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((result) => {
-        this.views.current.page = result;
         this.result.set(result);
         this.views.restoreScroll();
       });
@@ -76,7 +137,24 @@ export class CommentsPage implements OnInit {
 
   goToPage(page: number) {
     this.notice.set(null);
-    void this.router.navigate(['/comments'], { queryParams: { page } });
+    void this.router.navigate(['/comments'], {
+      queryParams: { page, sortBy: this.sortBy(), sortDirection: this.sortDirection() },
+    });
+  }
+
+  changeSortBy(value: string) {
+    if (value !== 'date' && value !== 'username' && value !== 'email') return;
+    this.changeSort(value, this.sortDirection());
+  }
+
+  changeSortDirection(value: string) {
+    if (value !== 'asc' && value !== 'desc') return;
+    this.changeSort(this.sortBy(), value);
+  }
+
+  private changeSort(sortBy: CommentSortBy, sortDirection: CommentSortDirection) {
+    this.notice.set(null);
+    void this.router.navigate(['/comments'], { queryParams: { page: 1, sortBy, sortDirection } });
   }
 
   retry() {
@@ -92,11 +170,13 @@ export class CommentsPage implements OnInit {
   onCreated() {
     this.closeComposer();
     this.notice.set('Comment posted.');
+    this.views.invalidateFeedPages();
     if (this.page() === 1) {
-      this.views.current.page = null;
       this.refresh.next();
     } else {
-      void this.router.navigate(['/comments'], { queryParams: { page: 1 } });
+      void this.router.navigate(['/comments'], {
+        queryParams: { page: 1, sortBy: this.sortBy(), sortDirection: this.sortDirection() },
+      });
     }
   }
 }

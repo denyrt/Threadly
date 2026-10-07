@@ -64,7 +64,7 @@ describe('Comment replies', () => {
   async function openFeed(items = [root], page = 2) {
     await harness.navigateByUrl(`/comments?page=${page}`);
     http
-      .expectOne(`/api/comments?page=${page}`)
+      .expectOne(`/api/comments?page=${page}&sortBy=date&sortDirection=desc`)
       .flush({ items, page, pageSize: 25, totalCount: 26 });
     await render();
   }

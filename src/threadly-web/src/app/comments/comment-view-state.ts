@@ -1,7 +1,7 @@
 import { ViewportScroller } from '@angular/common';
 import { afterNextRender, inject, Injectable, Injector, signal } from '@angular/core';
 import { NavigationStart, Router } from '@angular/router';
-import { Comment, CommentPage } from './comment.models';
+import { Comment, CommentFeedQuery, CommentPage } from './comment.models';
 
 export class ReplyBranch {
   readonly items = signal<Comment[]>([]);
@@ -19,6 +19,7 @@ export class ReplyBranch {
 class CommentView {
   readonly branches = new Map<string, ReplyBranch>();
   page: CommentPage | null = null;
+  feedQuery: CommentFeedQuery | null = null;
   comment: Comment | null = null;
   scroll: [number, number] = [0, 0];
   canGoBack = false;
@@ -57,6 +58,25 @@ export class CommentViewState {
       this.current.branches.set(comment.id, branch);
     }
     return branch;
+  }
+
+  selectFeed(query: CommentFeedQuery) {
+    const previous = this.current.feedQuery;
+    if (
+      previous?.page !== query.page ||
+      previous.sortBy !== query.sortBy ||
+      previous.sortDirection !== query.sortDirection
+    ) {
+      this.current.page = null;
+      this.current.branches.clear();
+      this.current.scroll = [0, 0];
+    }
+    this.current.feedQuery = query;
+    return this.current;
+  }
+
+  invalidateFeedPages() {
+    for (const view of new Set(this.history.values())) view.page = null;
   }
 
   restoreScroll() {

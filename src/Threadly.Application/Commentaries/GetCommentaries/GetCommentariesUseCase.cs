@@ -8,6 +8,6 @@ public sealed class GetCommentariesUseCase(ICommentaryRepository repository)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(input.Page, 1);
 
-        return repository.GetPageAsync(input.Page, PageSize, cancellationToken);
+        return repository.GetPageAsync(input.Page, PageSize, input.SortBy, input.SortDirection, cancellationToken);
     }
 }

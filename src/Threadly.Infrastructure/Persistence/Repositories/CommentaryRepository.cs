@@ -49,7 +49,8 @@ internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : IComme
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<CommentaryPage> GetPageAsync(int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<CommentaryPage> GetPageAsync(int page, int pageSize, CommentarySortBy sortBy,
+        CommentarySortDirection sortDirection, CancellationToken cancellationToken)
     {
         IQueryable<Commentary> roots = dbContext.Commentaries.AsNoTracking().Where(commentary => commentary.ParentId == null);
         int totalCount = await roots.CountAsync(cancellationToken);
@@ -60,9 +61,18 @@ internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : IComme
             return new CommentaryPage([], page, pageSize, totalCount);
         }
 
-        List<CommentaryDto> items = await roots
-            .OrderByDescending(commentary => commentary.CreatedAtUtc)
-            .ThenByDescending(commentary => commentary.Id)
+        IOrderedQueryable<Commentary> ordered = (sortBy, sortDirection) switch
+        {
+            (CommentarySortBy.Date, CommentarySortDirection.Asc) => roots.OrderBy(value => value.CreatedAtUtc).ThenBy(value => value.Id),
+            (CommentarySortBy.Date, CommentarySortDirection.Desc) => roots.OrderByDescending(value => value.CreatedAtUtc).ThenByDescending(value => value.Id),
+            (CommentarySortBy.Username, CommentarySortDirection.Asc) => roots.OrderBy(value => value.Username).ThenBy(value => value.Id),
+            (CommentarySortBy.Username, CommentarySortDirection.Desc) => roots.OrderByDescending(value => value.Username).ThenByDescending(value => value.Id),
+            (CommentarySortBy.Email, CommentarySortDirection.Asc) => roots.OrderBy(value => value.Email).ThenBy(value => value.Id),
+            (CommentarySortBy.Email, CommentarySortDirection.Desc) => roots.OrderByDescending(value => value.Email).ThenByDescending(value => value.Id),
+            _ => throw new ArgumentOutOfRangeException(nameof(sortBy), "Unknown comment ordering.")
+        };
+
+        List<CommentaryDto> items = await ordered
             .Skip((int)offset)
             .Take(pageSize)
             .Select(Projection)

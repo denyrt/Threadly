@@ -20,6 +20,13 @@ internal sealed class CommentaryConfiguration : IEntityTypeConfiguration<Comment
         builder.HasOne<Commentary>().WithMany().HasForeignKey(commentary => commentary.ParentId)
             .OnDelete(DeleteBehavior.NoAction);
         builder.HasIndex(commentary => new { commentary.ParentId, commentary.CreatedAtUtc, commentary.Id });
+        // Include the IS NULL predicate column so SQL Server can use these filtered indexes.
+        builder.HasIndex(commentary => new { commentary.Username, commentary.Id })
+            .HasFilter("[ParentId] IS NULL")
+            .IncludeProperties(commentary => commentary.ParentId);
+        builder.HasIndex(commentary => new { commentary.Email, commentary.Id })
+            .HasFilter("[ParentId] IS NULL")
+            .IncludeProperties(commentary => commentary.ParentId);
 
         builder.Property(commentary => commentary.Username)
             .IsRequired()

@@ -5,6 +5,8 @@ import {
   CommentPage,
   CommentPreview,
   CommentReplies,
+  CommentSortBy,
+  CommentSortDirection,
   CreateCommentRequest,
   TextContentBlock,
 } from './comment.models';
@@ -14,8 +16,12 @@ export class CommentsApi {
   private readonly http = inject(HttpClient);
   private readonly url = '/api/comments';
 
-  getPage(page: number) {
-    return this.http.get<CommentPage>(this.url, { params: { page } });
+  getPage(
+    page: number,
+    sortBy: CommentSortBy = 'date',
+    sortDirection: CommentSortDirection = 'desc',
+  ) {
+    return this.http.get<CommentPage>(this.url, { params: { page, sortBy, sortDirection } });
   }
 
   getById(id: string) {

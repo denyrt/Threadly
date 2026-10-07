@@ -28,12 +28,39 @@
 
 <section class="feed" aria-label="Comments feed" [attr.aria-busy]="loading()">
   <div class="feed-heading">
-    <h2>Latest comments</h2>
+    <h2>All comments</h2>
     @if (result(); as result) {
       <span class="muted"
         >{{ result.totalCount }} {{ result.totalCount === 1 ? 'comment' : 'comments' }}</span
       >
     }
+  </div>
+  <div class="feed-sorting" role="group" aria-label="Comment sorting">
+    <div>
+      <label for="sort-by">Sort by</label>
+      <select
+        #sortByControl
+        id="sort-by"
+        [value]="sortBy()"
+        (change)="changeSortBy(sortByControl.value)"
+      >
+        <option value="date">Date</option>
+        <option value="username">Username</option>
+        <option value="email">Email</option>
+      </select>
+    </div>
+    <div>
+      <label for="sort-direction">Direction</label>
+      <select
+        #sortDirectionControl
+        id="sort-direction"
+        [value]="sortDirection()"
+        (change)="changeSortDirection(sortDirectionControl.value)"
+      >
+        <option value="asc">Ascending</option>
+        <option value="desc">Descending</option>
+      </select>
+    </div>
   </div>
   @if (loading()) {
     <div class="state" role="status">
@@ -45,7 +72,7 @@
       <button class="button secondary" type="button" (click)="retry()">Try again</button>
     </div>
   } @else if (result(); as result) {
-    @for (comment of result.items; track comment.id) {
+    @for (comment of result.items; track viewVersion() + ':' + comment.id) {
       <app-comment-thread [comment]="comment" />
     } @empty {
       <div class="state">
@@ -54,9 +81,7 @@
         </h2>
         <p class="muted">
           {{
-            result.totalCount === 0
-              ? 'Share the first comment.'
-              : 'Head back to the latest comments.'
+            result.totalCount === 0 ? 'Share the first comment.' : 'Head back to the first page.'
           }}
         </p>
         @if (page() > 1) {
