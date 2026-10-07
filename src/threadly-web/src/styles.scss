@@ -20,6 +20,9 @@
 body {
   margin: 0;
 }
+body:has(dialog.image-viewer[open]) {
+  overflow: hidden;
+}
 button,
 input,
 textarea {

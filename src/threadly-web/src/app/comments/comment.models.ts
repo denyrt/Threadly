@@ -6,6 +6,16 @@ export interface Comment {
   createdAtUtc: string;
   parentId: string | null;
   replyCount: number;
+  attachments: CommentAttachment[];
+}
+
+export interface CommentAttachment {
+  id: string;
+  fileName: string;
+  contentType: 'image/jpeg' | 'image/png' | 'image/gif' | 'text/plain';
+  size: number;
+  width: number | null;
+  height: number | null;
 }
 
 export interface CommentReplies {

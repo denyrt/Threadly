@@ -19,6 +19,7 @@ describe('Comments', () => {
     createdAtUtc: '2026-10-05T10:30:00Z',
     parentId: null,
     replyCount: 0,
+    attachments: [],
   };
 
   beforeEach(async () => {

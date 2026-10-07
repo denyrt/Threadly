@@ -15,8 +15,17 @@ export class CommentsApi {
     return this.http.get<Comment>(`${this.url}/${encodeURIComponent(id)}`);
   }
 
-  create(payload: CreateCommentRequest) {
-    return this.http.post<Comment>(this.url, payload);
+  create(payload: CreateCommentRequest, files: readonly File[] = []) {
+    if (files.length === 0) {
+      return this.http.post<Comment>(this.url, payload);
+    }
+    const form = new FormData();
+    form.append('username', payload.username);
+    form.append('email', payload.email);
+    form.append('text', payload.text);
+    if (payload.parentId) form.append('parentId', payload.parentId);
+    for (const file of files) form.append('attachments', file, file.name);
+    return this.http.post<Comment>(this.url, form);
   }
 
   getReplies(id: string, cursor: string | null = null) {
