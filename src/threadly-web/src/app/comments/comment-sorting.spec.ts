@@ -1,3 +1,4 @@
+import { provideTestTurnstile } from './turnstile-testing';
 import { ViewportScroller } from '@angular/common';
 import { provideLocationMocks } from '@angular/common/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -40,6 +41,7 @@ describe('Comment sorting', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       providers: [
+        provideTestTurnstile(),
         provideRouter(routes),
         provideHttpClient(),
         provideHttpClientTesting(),

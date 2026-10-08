@@ -149,6 +149,7 @@ public sealed partial class CommentsApiTests
     {
         using MultipartFormDataContent badText = new();
         badText.Add(new StringContent("Bad user!"), "username");
+        badText.Add(new StringContent("test-token"), "captchaToken");
         badText.Add(new StringContent("invalid"), "email");
         badText.Add(new StringContent(" "), "content");
         AddFile(badText, "valid.txt", "text"u8.ToArray());
@@ -203,6 +204,7 @@ public sealed partial class CommentsApiTests
     private static MultipartFormDataContent CommentForm(Guid? parent = null)
     {
         MultipartFormDataContent form = new();
+        form.Add(new StringContent("test-token"), "captchaToken");
         form.Add(new StringContent("Reader"), "username");
         form.Add(new StringContent("reader@example.com"), "email");
         form.Add(new StringContent("[{\"type\":\"text\",\"html\":\"<i>Comment with files 🧵</i>\"}]"), "content");

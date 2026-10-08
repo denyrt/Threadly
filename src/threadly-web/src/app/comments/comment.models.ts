@@ -40,6 +40,7 @@ export interface CommentFeedQuery {
 }
 
 export interface CreateCommentRequest {
+  captchaToken: string;
   username: string;
   email: string;
   content: TextContentBlock[];
@@ -48,6 +49,7 @@ export interface CreateCommentRequest {
 
 export interface ValidationProblem {
   errors?: Record<string, string[]>;
+  code?: string;
 }
 
 export interface TextContentBlock {

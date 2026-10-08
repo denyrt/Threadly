@@ -1,3 +1,4 @@
+import { provideTestTurnstile } from './turnstile-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { ViewportScroller } from '@angular/common';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -25,6 +26,7 @@ describe('Comments', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       providers: [
+        provideTestTurnstile(),
         provideRouter(routes),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -222,6 +224,7 @@ describe('Comments', () => {
 
     const post = http.expectOne({ method: 'POST', url: '/api/comments' });
     const payload = {
+      captchaToken: 'test-token',
       username: values.username,
       email: values.email,
       content: [{ type: 'text' as const, html: values.text }],
@@ -242,6 +245,7 @@ describe('Comments', () => {
 
     const post = http.expectOne({ method: 'POST', url: '/api/comments' });
     expect(post.request.body).toEqual({
+      captchaToken: 'test-token',
       username: comment.username,
       email: comment.email,
       content: comment.content,
@@ -301,7 +305,9 @@ describe('Comments', () => {
       .error(new ProgressEvent('network error'));
     await render();
 
-    expect(element().querySelector('[role="alert"]')?.textContent).toContain('could not be posted');
+    expect(element().querySelector('[role="alert"]')?.textContent).toContain(
+      'may have been posted',
+    );
     expect((element().querySelector('#text') as HTMLTextAreaElement).value).toBe(
       comment.content[0].html,
     );

@@ -72,24 +72,21 @@ public sealed class MigrationStartupTests
             content = new[] { new { type = "text", html = "Created after AppHost migrations." } }
         }, cancellationToken);
 
-        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
-        JsonElement created = await create.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
-        Guid id = created.GetProperty("id").GetGuid();
-        Assert.NotEqual(Guid.Empty, id);
-
-        Uri location = Assert.IsType<Uri>(create.Headers.Location);
-        using HttpResponseMessage read = await client.GetAsync(location, cancellationToken);
-        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
-        JsonElement reloaded = await read.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
-        Assert.Equal(id, reloaded.GetProperty("id").GetGuid());
+        // This process-level startup test must not depend on Cloudflare availability.
+        // Successful protected writes are covered with a controlled HTTP transport in API tests.
+        Assert.Equal(HttpStatusCode.BadRequest, create.StatusCode);
+        JsonElement rejected = await create.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+        Assert.True(rejected.GetProperty("errors").TryGetProperty("captchaToken", out _));
+        using HttpResponseMessage config = await client.GetAsync("/api/captcha/config", cancellationToken);
+        Assert.Equal(HttpStatusCode.OK, config.StatusCode);
 
         using HttpResponseMessage list = await client.GetAsync("/api/comments?page=1", cancellationToken);
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
         JsonElement page = await list.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
         Assert.Equal(1, page.GetProperty("page").GetInt32());
         Assert.Equal(25, page.GetProperty("pageSize").GetInt32());
-        Assert.Equal(1, page.GetProperty("totalCount").GetInt32());
-        Assert.Equal(id, Assert.Single(page.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+        Assert.Equal(0, page.GetProperty("totalCount").GetInt32());
+        Assert.Empty(page.GetProperty("items").EnumerateArray());
     }
 
     private static void RemoveFrontendResources(IDistributedApplicationTestingBuilder builder)

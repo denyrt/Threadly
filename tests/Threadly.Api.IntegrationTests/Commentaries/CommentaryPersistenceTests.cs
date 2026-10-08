@@ -34,7 +34,10 @@ public sealed class CommentaryPersistenceTests(SqlServerFixture sqlServer) : IAs
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    [$"ConnectionStrings:{DependencyInjection.DatabaseConnectionName}"] = connectionString
+                    [$"ConnectionStrings:{DependencyInjection.DatabaseConnectionName}"] = connectionString,
+                    ["Turnstile:SiteKey"] = "integration-site-key",
+                    ["Turnstile:SecretKey"] = "integration-secret-key",
+                    ["Turnstile:AllowedHostnames:0"] = "localhost"
                 }));
         });
     }

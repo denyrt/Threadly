@@ -182,12 +182,16 @@
         attachmentsError()
       }}</span>
     </div>
+    <app-turnstile-widget (tokenChange)="captchaChanged($event)" />
+    @if (serverErrors()['captchaToken']; as messages) {
+      <p class="field-error" role="alert">{{ messages[0] }}</p>
+    }
     @if (error()) {
       <p class="error-message" role="alert">{{ error() }}</p>
     }
     <div class="composer-actions">
       <span class="muted">Your username and email will be visible.</span>
-      <button class="button primary" type="submit" [disabled]="submitting()">
+      <button class="button primary" type="submit" [disabled]="submitting() || !captchaToken()">
         {{ submitting() ? 'Posting…' : parent() ? 'Post reply' : 'Post comment' }}
       </button>
     </div>
