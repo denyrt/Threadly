@@ -18,15 +18,18 @@ import { finalize } from 'rxjs';
 import { Comment, CommentPreview, TextContentBlock, ValidationProblem } from './comment.models';
 import { CommentBody } from './comment-body';
 import { CommentsApi } from './comments-api';
+import { TurnstileWidget } from './turnstile-widget';
 
 @Component({
   selector: 'app-comment-composer',
-  imports: [ReactiveFormsModule, CommentBody],
+  imports: [ReactiveFormsModule, CommentBody, TurnstileWidget],
   templateUrl: './comment-composer.html',
   styleUrl: './comment-composer.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CommentComposer implements AfterViewInit {
+  private readonly captchaWidget = viewChild(TurnstileWidget);
+  readonly captchaToken = signal<string | null>(null);
   private readonly textInput = viewChild.required<ElementRef<HTMLTextAreaElement>>('textInput');
   private previewRevision = 0;
   private linkSelection = { start: 0, end: 0 };
@@ -90,7 +93,11 @@ export class CommentComposer implements AfterViewInit {
     });
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.serverErrors.update((errors) =>
-        Object.fromEntries(Object.entries(errors).filter(([key]) => key.startsWith('attachments'))),
+        Object.fromEntries(
+          Object.entries(errors).filter(
+            ([key]) => key.startsWith('attachments') || key === 'captchaToken',
+          ),
+        ),
       );
     });
   }
@@ -163,13 +170,23 @@ export class CommentComposer implements AfterViewInit {
     }
 
     const { username, email } = this.form.getRawValue();
+    const captchaToken = this.captchaToken();
+    if (!captchaToken) {
+      this.serverErrors.update((errors) => ({
+        ...errors,
+        captchaToken: ['Complete verification before posting.'],
+      }));
+      return;
+    }
     const payload = {
+      captchaToken,
       username,
       email,
       content: this.content(),
       ...(this.parent() ? { parentId: this.parent()!.id } : {}),
     };
     this.submitting.set(true);
+    this.captchaToken.set(null);
     this.error.set(null);
     this.serverErrors.set({});
     this.form.disable({ emitEvent: false });
@@ -180,6 +197,7 @@ export class CommentComposer implements AfterViewInit {
         finalize(() => {
           this.submitting.set(false);
           this.form.enable({ emitEvent: false });
+          if (!this.destroyRef.destroyed) this.captchaWidget()?.reset();
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -198,13 +216,32 @@ export class CommentComposer implements AfterViewInit {
             );
           } else if (error.status === 429) {
             this.error.set(
-              'Uploads are busy. Your files are still selected; please try again shortly.',
+              problem?.code === 'upload_concurrency'
+                ? 'Uploads are busy. Your draft and files are still here; please try again shortly.'
+                : 'Too many publication attempts. Your draft and files are still here; please wait before trying again.',
+            );
+          } else if (error.status === 503) {
+            this.error.set(
+              'Verification is temporarily unavailable. Your draft and files are still here; please try again shortly.',
+            );
+          } else if (error.status === 0) {
+            this.error.set(
+              'The response was lost. Your comment may have been posted. Check the discussion before trying again; your draft and files are still here.',
             );
           } else {
             this.error.set('Your comment could not be posted. Please try again.');
           }
         },
       });
+  }
+
+  captchaChanged(token: string | null) {
+    this.captchaToken.set(token);
+    if (token) {
+      this.serverErrors.update((errors) =>
+        Object.fromEntries(Object.entries(errors).filter(([key]) => key !== 'captchaToken')),
+      );
+    }
   }
 
   private content(): TextContentBlock[] {

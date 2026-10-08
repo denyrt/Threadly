@@ -1,17 +1,22 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using Threadly.Api.Publication;
 using Threadly.Application.Commentaries.Attachments;
 using Threadly.Application.Commentaries.CreateCommentary;
 using Threadly.Application.Commentaries.GetCommentaries;
 using Threadly.Application.Commentaries.GetCommentaryById;
 using Threadly.Application.Commentaries.GetCommentaryReplies;
 using Threadly.Infrastructure;
+using Threadly.Infrastructure.Captcha;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddInfrastructure();
+builder.Services.AddTurnstile(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddPublicationProtection(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = AttachmentLimits.MaxRequestBytes);
 builder.Services.AddRateLimiter(options =>
 {
@@ -49,6 +54,8 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 app.UseExceptionHandler(new ExceptionHandlerOptions
 {
     StatusCodeSelector = exception => exception is BadHttpRequestException requestException
@@ -62,12 +69,17 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// The local Angular proxy serves HTTP and forwards its original scheme to the HTTPS API endpoint.
+if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 
+app.UseRouting();
+app.UseMiddleware<PublicationRateLimitMiddleware>();
 app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+app.MapGet("/api/captcha/config", (IOptions<TurnstileOptions> options) =>
+    Results.Ok(new { siteKey = options.Value.SiteKey, action = options.Value.ExpectedAction }));
 
 app.Run();
 

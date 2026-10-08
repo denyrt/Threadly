@@ -50,7 +50,7 @@ public sealed partial class CommentsApiTests
     [InlineData("123")]
     public async Task Create_InvalidParentIsAFieldErrorAndDoesNotSave(string parentJson)
     {
-        string json = "{\"username\":\"Reader\",\"email\":\"reader@example.com\",\"content\":[{\"type\":\"text\",\"html\":\"A reply\"}],\"parentId\":" + parentJson + "}";
+        string json = "{\"captchaToken\":\"test-token\",\"username\":\"Reader\",\"email\":\"reader@example.com\",\"content\":[{\"type\":\"text\",\"html\":\"A reply\"}],\"parentId\":" + parentJson + "}";
         using StringContent content = new(json, Encoding.UTF8, "application/json");
         using HttpResponseMessage response = await client.PostAsync("/api/comments", content, TestContext.Current.CancellationToken);
         ValidationProblemDetails problem = await ReadValidationProblemAsync(response);
@@ -158,6 +158,7 @@ public sealed partial class CommentsApiTests
     {
         using HttpResponseMessage response = await client.PostAsJsonAsync("/api/comments", new
         {
+            captchaToken = "test-token",
             username = "Reader",
             email = "reader@example.com",
             content = new[] { new { type = "text", html = "<strong>A comment</strong>" } },

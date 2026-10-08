@@ -23,12 +23,12 @@ public sealed partial class CommentsApiTests
         Assert.Equal(content[0].html.Length, preview.BudgetUsed);
         Assert.Equal(2000, preview.BudgetLimit);
         await AssertNoPublication();
-        using HttpResponseMessage createResponse = await client.PostAsJsonAsync("/api/comments", new { username = "Reader", email = "reader@example.com", content }, TestContext.Current.CancellationToken);
+        using HttpResponseMessage createResponse = await client.PostAsJsonAsync("/api/comments", new { captchaToken = "test-token", username = "Reader", email = "reader@example.com", content }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         CommentaryDto created = (await createResponse.Content.ReadFromJsonAsync<CommentaryDto>(TestContext.Current.CancellationToken))!;
         Assert.Equivalent(preview.Content, created.Content);
 
-        using HttpResponseMessage badCreate = await client.PostAsJsonAsync("/api/comments", new { username = "Reader", email = "reader@example.com", content = new[] { new { type = "text", html = "<i>changed" } } }, TestContext.Current.CancellationToken);
+        using HttpResponseMessage badCreate = await client.PostAsJsonAsync("/api/comments", new { captchaToken = "test-token", username = "Reader", email = "reader@example.com", content = new[] { new { type = "text", html = "<i>changed" } } }, TestContext.Current.CancellationToken);
         Assert.Contains("content", (await ReadValidationProblemAsync(badCreate)).Errors.Keys);
         Assert.Equal(1, (await ReadPageAsync("/api/comments")).TotalCount);
     }
@@ -44,7 +44,7 @@ public sealed partial class CommentsApiTests
         var content = new[] { new { type = "text", html } };
         using HttpResponseMessage preview = await client.PostAsJsonAsync("/api/comments/preview", new { content }, TestContext.Current.CancellationToken);
         string[] expected = (await ReadValidationProblemAsync(preview)).Errors["content"];
-        using HttpResponseMessage create = await client.PostAsJsonAsync("/api/comments", new { username = "Reader", email = "reader@example.com", content }, TestContext.Current.CancellationToken);
+        using HttpResponseMessage create = await client.PostAsJsonAsync("/api/comments", new { captchaToken = "test-token", username = "Reader", email = "reader@example.com", content }, TestContext.Current.CancellationToken);
         Assert.Equal(expected, (await ReadValidationProblemAsync(create)).Errors["content"]);
         using MultipartFormDataContent form = ContentForm(JsonSerializer.Serialize(content));
         // Invalid image bytes must never reach the attachment processor before HTML validation.
@@ -65,7 +65,7 @@ public sealed partial class CommentsApiTests
     [InlineData("{\"type\":\"text\",\"html\":\"x\"}")]
     public async Task JsonAndMultipartRejectInvalidStructure(string json)
     {
-        using StringContent body = new("{\"username\":\"Reader\",\"email\":\"reader@example.com\",\"content\":" + json + "}", System.Text.Encoding.UTF8, "application/json");
+        using StringContent body = new("{\"captchaToken\":\"test-token\",\"username\":\"Reader\",\"email\":\"reader@example.com\",\"content\":" + json + "}", System.Text.Encoding.UTF8, "application/json");
         using HttpResponseMessage response = await client.PostAsync("/api/comments", body, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using MultipartFormDataContent form = ContentForm(json);
@@ -112,7 +112,7 @@ public sealed partial class CommentsApiTests
     public async Task ContentRoundTripsInOrderAndAllowsExpandedHtml()
     {
         var content = new[] { new { type = "text", html = new string('&', 1990) }, new { type = "text", html = "\nsecond" } };
-        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/comments", new { username = "Reader", email = "reader@example.com", content }, TestContext.Current.CancellationToken);
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/comments", new { captchaToken = "test-token", username = "Reader", email = "reader@example.com", content }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         CommentaryDto created = (await response.Content.ReadFromJsonAsync<CommentaryDto>(TestContext.Current.CancellationToken))!;
         Assert.True(created.Content[0].Html.Length > 2000);
@@ -125,6 +125,7 @@ public sealed partial class CommentsApiTests
     private static MultipartFormDataContent ContentForm(string json, Guid? parentId = null)
     {
         MultipartFormDataContent form = new();
+        form.Add(new StringContent("test-token"), "captchaToken");
         form.Add(new StringContent("Reader"), "username");
         form.Add(new StringContent("reader@example.com"), "email");
         form.Add(new StringContent(json), "content");

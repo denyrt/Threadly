@@ -1,8 +1,22 @@
 using Aspire.Hosting.Docker.Resources.ServiceNodes;
+using Aspire.Hosting.Pipelines;
+using Microsoft.Extensions.DependencyInjection;
+using Threadly.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddDockerComposeEnvironment("compose");
+string proxySubnet = builder.Configuration["Deployment:ProxySubnet"] ?? "172.30.80.0/24";
+string proxyAddress = builder.Configuration["Deployment:ProxyAddress"] ?? "172.30.80.10";
+var compose = builder.AddDockerComposeEnvironment("compose");
+#pragma warning disable ASPIREPIPELINES001, ASPIREPIPELINES004 // Complete the generated Compose network configuration before publish/deploy finishes.
+compose.WithPipelineStepFactory("configure-proxy-network", async context =>
+{
+    string outputPath = context.Services.GetRequiredService<IPipelineOutputService>().GetOutputDirectory();
+    string composePath = Path.Combine(outputPath, "docker-compose.yaml");
+    string yaml = await File.ReadAllTextAsync(composePath, context.CancellationToken);
+    await File.WriteAllTextAsync(composePath, ProxyDeployment.Configure(yaml, proxySubnet, proxyAddress), context.CancellationToken);
+}, dependsOn: ["publish-compose"], requiredBy: [WellKnownPipelineSteps.Publish]);
+#pragma warning restore ASPIREPIPELINES001, ASPIREPIPELINES004
 
 var sql = builder.AddSqlServer("sql")
     .WithImageTag("2022-CU27-ubuntu-22.04")
@@ -47,6 +61,9 @@ if (builder.ExecutionContext.IsRunMode)
 }
 else
 {
+    var siteKey = builder.AddParameter("turnstile-site-key");
+    var secretKey = builder.AddParameter("turnstile-secret-key", secret: true);
+    var hostname = builder.AddParameter("turnstile-hostname");
     var migrations = builder.AddDockerfile(
         "threadly-migrations", "../..", "src/Threadly.MigrationWorker/Dockerfile")
         .WithReference(database)
@@ -60,6 +77,16 @@ else
     var api = builder.AddDockerfile("threadly-api", "../..", "src/Threadly.Api/Dockerfile")
         .WithHttpEndpoint(targetPort: 8080)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
+        .WithEnvironment("Turnstile__SiteKey", siteKey)
+        .WithEnvironment("Turnstile__SecretKey", secretKey)
+        .WithEnvironment("Turnstile__AllowedHostnames__0", hostname)
+        .WithEnvironment("Turnstile__TestMode", "false")
+        .WithEnvironment("Turnstile__ExpectedAction", builder.Configuration["Turnstile:ExpectedAction"] ?? "comment_create")
+        .WithEnvironment("Turnstile__Timeout", builder.Configuration["Turnstile:Timeout"] ?? "00:00:10")
+        .WithEnvironment("PublicationRateLimit__PermitLimit", builder.Configuration["PublicationRateLimit:PermitLimit"] ?? "10")
+        .WithEnvironment("PublicationRateLimit__Window", builder.Configuration["PublicationRateLimit:Window"] ?? "00:01:00")
+        .WithEnvironment("TrustedProxies__KnownProxies__0", proxyAddress)
+        .WithEnvironment("TrustedProxies__ForwardLimit", "1")
         .WithReference(database)
         .WaitForCompletion(migrations);
 

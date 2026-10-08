@@ -12,6 +12,7 @@ using Threadly.Api.IntegrationTests.Fixtures;
 using Threadly.Application.Commentaries;
 using Threadly.Domain.Commentaries;
 using Threadly.Infrastructure;
+using Threadly.Infrastructure.Captcha;
 using Threadly.Infrastructure.Persistence;
 using Xunit;
 
@@ -27,6 +28,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
     private WebApplicationFactory<Program> factory = null!;
     private HttpClient client = null!;
     private readonly SqlQueryRecorder queries = new();
+    private readonly CaptchaTransport captcha = new();
 
     public async ValueTask InitializeAsync()
     {
@@ -37,10 +39,16 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
         {
             builder.UseEnvironment("Testing");
             builder.ConfigureServices(services => services.AddDbContext<ThreadlyDbContext>(options => options.AddInterceptors(queries)));
+            builder.ConfigureServices(services => services.AddHttpClient(TurnstileVerifier.ClientName).ConfigurePrimaryHttpMessageHandler(() => captcha));
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    [$"ConnectionStrings:{DependencyInjection.DatabaseConnectionName}"] = connectionString
+                    [$"ConnectionStrings:{DependencyInjection.DatabaseConnectionName}"] = connectionString,
+                    ["Turnstile:SiteKey"] = "integration-site-key",
+                    ["Turnstile:SecretKey"] = "integration-secret-key",
+                    ["Turnstile:AllowedHostnames:0"] = "localhost",
+                    // Pagination fixtures publish many comments; protection tests override this back to a small budget.
+                    ["PublicationRateLimit:PermitLimit"] = "100"
                 }));
         });
 
@@ -77,6 +85,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
 
         using HttpResponseMessage response = await client.PostAsJsonAsync("/api/comments", new
         {
+            captchaToken = "test-token",
             username = "Denis42",
             email = "Denis@Example.com",
             content = new[] { new { type = "text", html = "  Привіт, світе! 🧵\nДругий рядок.  " } },
@@ -132,7 +141,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         using HttpResponseMessage response = await client.PostAsJsonAsync(
-            "/api/comments", new { username, email, content = new[] { new { type = "text", html = text } } }, cancellationToken);
+            "/api/comments", new { captchaToken = "test-token", username, email, content = new[] { new { type = "text", html = text } } }, cancellationToken);
 
         ValidationProblemDetails problem = await ReadValidationProblemAsync(response);
         Assert.Contains(message, problem.Errors[field]);
@@ -147,7 +156,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
             "/api/comments", new { }, TestContext.Current.CancellationToken);
 
         ValidationProblemDetails problem = await ReadValidationProblemAsync(response);
-        Assert.Equal(new[] { "content", "email", "username" }, problem.Errors.Keys.Order());
+        Assert.Equal(new[] { "captchaToken", "content", "email", "username" }, problem.Errors.Keys.Order());
         Assert.Empty((await ReadPageAsync("/api/comments")).Items);
     }
 
@@ -174,7 +183,7 @@ public sealed partial class CommentsApiTests(SqlServerFixture sqlServer) : IAsyn
         Assert.Equal(Commentary.MaxEmailLength, email.Length);
 
         using HttpResponseMessage response = await client.PostAsJsonAsync(
-            "/api/comments", new { username, email, content = new[] { new { type = "text", html = text } } }, TestContext.Current.CancellationToken);
+            "/api/comments", new { captchaToken = "test-token", username, email, content = new[] { new { type = "text", html = text } } }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }

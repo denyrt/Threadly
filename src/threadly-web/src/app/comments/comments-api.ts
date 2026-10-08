@@ -35,6 +35,7 @@ export class CommentsApi {
     const form = new FormData();
     form.append('username', payload.username);
     form.append('email', payload.email);
+    form.append('captchaToken', payload.captchaToken);
     form.append('content', JSON.stringify(payload.content));
     if (payload.parentId) form.append('parentId', payload.parentId);
     for (const file of files) form.append('attachments', file, file.name);

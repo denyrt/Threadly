@@ -27,7 +27,7 @@ public sealed class CreateCommentaryForm : CommentaryIdentityPayload
         {
             throw new CommentaryValidationException("content", "Content must be a JSON array of text blocks with type and html fields.");
         }
-        return new(Username, Email, content, ParentId,
+        return new(Username, Email, content, CaptchaToken, ParentId,
             Attachments.Select(file => new AttachmentUpload(file.FileName, file.Length, file.OpenReadStream)).ToArray());
     }
 }

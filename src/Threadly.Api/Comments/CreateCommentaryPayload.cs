@@ -19,6 +19,10 @@ public class CommentaryIdentityPayload : IValidatableObject
 
     public Guid? ParentId { get; init; }
 
+    [Required(ErrorMessage = "Complete verification before posting.")]
+    [StringLength(2048, ErrorMessage = "Verification token cannot exceed {1} characters.")]
+    public string CaptchaToken { get; init; } = string.Empty;
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (ParentId == Guid.Empty)
@@ -34,5 +38,5 @@ public sealed class CreateCommentaryPayload : CommentaryIdentityPayload
     [Required(ErrorMessage = "Content is required.")]
     public IReadOnlyList<ContentBlockInput>? Content { get; init; }
 
-    public CreateCommentaryInput ToInput() => new(Username, Email, Content, ParentId);
+    public CreateCommentaryInput ToInput() => new(Username, Email, Content, CaptchaToken, ParentId);
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Threadly.Api.Publication;
 using Threadly.Application.Commentaries;
 using Threadly.Application.Commentaries.Attachments;
 using Threadly.Application.Commentaries.Content;
@@ -29,6 +30,7 @@ public sealed class CommentsController(
         Ok(contentProcessor.Process(payload.Content));
 
     [HttpPost]
+    [Publication]
     [Consumes("application/json")]
     [RequestSizeLimit(AttachmentLimits.MaxRequestBytes)]
     [ProducesResponseType<CommentaryDto>(StatusCodes.Status201Created)]
@@ -42,11 +44,12 @@ public sealed class CommentsController(
     }
 
     [HttpPost]
+    [Publication]
     [Consumes("multipart/form-data")]
     [ReadUploadForm]
     [EnableRateLimiting("uploads")]
     [RequestSizeLimit(AttachmentLimits.MaxRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = AttachmentLimits.MaxRequestBytes, ValueCountLimit = 14,
+    [RequestFormLimits(MultipartBodyLengthLimit = AttachmentLimits.MaxRequestBytes, ValueCountLimit = 15,
         ValueLengthLimit = ContentLimits.JsonFieldLength, KeyLengthLimit = 128, MultipartHeadersLengthLimit = 4096)]
     [ProducesResponseType<CommentaryDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
