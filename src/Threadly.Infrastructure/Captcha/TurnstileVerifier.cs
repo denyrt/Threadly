@@ -1,9 +1,9 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Threadly.Application.Commentaries.Captcha;
 
 namespace Threadly.Infrastructure.Captcha;

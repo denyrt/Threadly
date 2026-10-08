@@ -1,8 +1,8 @@
-using System.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using System.Net;
 using Threadly.Application.Commentaries.Captcha;
 using Threadly.Infrastructure.Captcha;
 using Xunit;
