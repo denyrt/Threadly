@@ -6,6 +6,7 @@ public interface ICommentaryRepository
 {
     Task AddAsync(Commentary commentary, CancellationToken cancellationToken);
     Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ReplyCountDto>> GetReplyCountsAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken);
     Task<CommentaryDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<CommentaryPage> GetPageAsync(int page, int pageSize, CommentarySortBy sortBy,
         CommentarySortDirection sortDirection, CancellationToken cancellationToken);

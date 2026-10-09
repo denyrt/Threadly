@@ -6,6 +6,7 @@
     <a class="button secondary" routerLink="/comments">← Back to comments</a>
   }
 </div>
+<app-comments-live-status />
 <section class="feed" aria-label="Comment detail" [attr.aria-busy]="loading()">
   @if (loading()) {
     <div class="state" role="status">

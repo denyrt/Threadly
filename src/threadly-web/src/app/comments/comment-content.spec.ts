@@ -1,3 +1,4 @@
+import { provideQuietCommentsLive } from './comments-live-testing';
 import { provideTestTurnstile } from './turnstile-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -24,7 +25,12 @@ describe('Comment content editor', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [provideTestTurnstile(), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideTestTurnstile(),
+        provideQuietCommentsLive(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     });
     fixture = TestBed.createComponent(CommentComposer);
     http = TestBed.inject(HttpTestingController);

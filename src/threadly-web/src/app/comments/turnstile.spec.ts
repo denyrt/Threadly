@@ -1,3 +1,4 @@
+import { provideQuietCommentsLive } from './comments-live-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -69,7 +70,12 @@ describe('Composer verification', () => {
   const draft = { username: 'Reader', email: 'reader@example.com', text: 'Draft text' };
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestTurnstile()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideTestTurnstile(),
+        provideQuietCommentsLive(),
+      ],
     });
     http = TestBed.inject(HttpTestingController);
     turnstile = TestBed.inject(Turnstile) as unknown as TestTurnstile;

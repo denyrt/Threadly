@@ -1,3 +1,4 @@
+import { provideQuietCommentsLive } from './comments-live-testing';
 import { provideTestTurnstile } from './turnstile-testing';
 import { ViewportScroller } from '@angular/common';
 import { provideLocationMocks } from '@angular/common/testing';
@@ -42,6 +43,7 @@ describe('Comment sorting', () => {
     TestBed.configureTestingModule({
       providers: [
         provideTestTurnstile(),
+        provideQuietCommentsLive(),
         provideRouter(routes),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -199,8 +201,9 @@ describe('Comment sorting', () => {
     expect(element().querySelectorAll('app-comment-card')).toHaveLength(3);
     expect(scroll.scrollToPosition).toHaveBeenLastCalledWith([0, 480]);
     http.expectNone((request) => request.method === 'GET');
-    button('Show more').click();
-    http.expectOne('/api/comments/root/replies?cursor=next').flush({ items: [], nextCursor: null });
+    expect(element().textContent).toContain('Refresh replies before loading more');
+    button('Refresh replies').click();
+    http.expectOne('/api/comments/root/replies').flush({ items: [], nextCursor: null });
     await render();
   });
 

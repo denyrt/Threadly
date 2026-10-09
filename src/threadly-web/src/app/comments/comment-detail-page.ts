@@ -15,10 +15,11 @@ import { CommentThread } from './comment-thread';
 import { CommentViewState } from './comment-view-state';
 import { Comment } from './comment.models';
 import { CommentsApi } from './comments-api';
+import { CommentsLiveStatus } from './comments-live-status';
 
 @Component({
   selector: 'app-comment-detail-page',
-  imports: [CommentThread, RouterLink],
+  imports: [CommentThread, RouterLink, CommentsLiveStatus],
   templateUrl: './comment-detail-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

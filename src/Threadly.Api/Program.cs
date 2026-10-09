@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using Threadly.Api.Comments;
 using Threadly.Api.Publication;
+using Threadly.Application.Commentaries;
 using Threadly.Application.Commentaries.Attachments;
 using Threadly.Application.Commentaries.CreateCommentary;
 using Threadly.Application.Commentaries.GetCommentaries;
@@ -33,6 +35,13 @@ builder.Services.AddScoped<CreateCommentaryUseCase>();
 builder.Services.AddScoped<GetCommentaryByIdUseCase>();
 builder.Services.AddScoped<GetCommentariesUseCase>();
 builder.Services.AddScoped<GetCommentaryRepliesUseCase>();
+builder.Services.AddScoped<GetReplyCountsUseCase>();
+builder.Services.AddSingleton<ICommentCreatedPublisher, SignalRCommentCreatedPublisher>();
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 8192;
+    options.MaximumParallelInvocationsPerClient = 1;
+});
 
 builder.Services.AddControllers(options =>
     options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
@@ -78,6 +87,7 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+app.MapHub<CommentsHub>("/hubs/comments");
 app.MapGet("/api/captcha/config", (IOptions<TurnstileOptions> options) =>
     Results.Ok(new { siteKey = options.Value.SiteKey, action = options.Value.ExpectedAction }));
 

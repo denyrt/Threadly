@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Threadly.Application.Commentaries.Attachments;
 using Threadly.Application.Commentaries.Captcha;
 using Threadly.Application.Commentaries.Content;
@@ -7,7 +8,8 @@ namespace Threadly.Application.Commentaries.CreateCommentary;
 
 public sealed class CreateCommentaryUseCase(
     ICommentaryRepository repository, TimeProvider timeProvider, IAttachmentProcessor attachmentProcessor,
-    IContentProcessor contentProcessor, ICaptchaVerifier captchaVerifier)
+    IContentProcessor contentProcessor, ICaptchaVerifier captchaVerifier,
+    ICommentCreatedPublisher publisher, ILogger<CreateCommentaryUseCase> logger)
 {
     public async Task<CommentaryDto> ExecuteAsync(CreateCommentaryInput input, CancellationToken cancellationToken)
     {
@@ -38,6 +40,19 @@ public sealed class CreateCommentaryUseCase(
         }
 
         await repository.AddAsync(commentary, cancellationToken);
+
+        CommentCreated notification = new(Guid.NewGuid(), commentary.Id, commentary.ParentId, commentary.CreatedAtUtc);
+        // SQL is committed. A disconnected HTTP caller must not cancel this best-effort notification.
+        using CancellationTokenSource delivery = new(TimeSpan.FromSeconds(2));
+        try
+        {
+            await publisher.PublishAsync(notification, delivery.Token).WaitAsync(delivery.Token);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning("Comment notification failed after commit. Event {EventId}, comment {CommentId}, failure {FailureType}",
+                notification.EventId, notification.CommentId, exception.GetType().Name);
+        }
 
         return CommentaryDto.From(commentary);
     }

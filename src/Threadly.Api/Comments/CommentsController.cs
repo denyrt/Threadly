@@ -19,8 +19,19 @@ public sealed class CommentsController(
     GetCommentaryByIdUseCase getCommentaryById,
     GetCommentariesUseCase getCommentaries,
     GetCommentaryRepliesUseCase getCommentaryReplies,
+    GetReplyCountsUseCase getReplyCounts,
     IAttachmentRepository attachmentRepository, IContentProcessor contentProcessor) : ControllerBase
 {
+    public sealed record ReplyCountsPayload(IReadOnlyList<Guid>? Ids);
+
+    [HttpPost("reply-counts")]
+    [Consumes("application/json")]
+    [RequestSizeLimit(8192)]
+    [ProducesResponseType<ReplyCounts>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ReplyCounts>> GetReplyCounts([FromBody] ReplyCountsPayload payload, CancellationToken cancellationToken) =>
+        Ok(await getReplyCounts.ExecuteAsync(payload.Ids, cancellationToken));
+
     [HttpPost("preview")]
     [Consumes("application/json")]
     [RequestSizeLimit(ContentLimits.JsonFieldLength)]

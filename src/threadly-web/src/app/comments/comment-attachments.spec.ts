@@ -1,3 +1,4 @@
+import { provideQuietCommentsLive } from './comments-live-testing';
 import { provideTestTurnstile } from './turnstile-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -25,6 +26,7 @@ describe('Comment attachments', () => {
     TestBed.configureTestingModule({
       providers: [
         provideTestTurnstile(),
+        provideQuietCommentsLive(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
