@@ -9,6 +9,13 @@ export interface Comment {
   attachments: CommentAttachment[];
 }
 
+export interface CommentCreated {
+  eventId: string;
+  commentId: string;
+  parentId: string | null;
+  createdAtUtc: string;
+}
+
 export interface CommentAttachment {
   id: string;
   fileName: string;

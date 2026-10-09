@@ -28,6 +28,13 @@ export class CommentsApi {
     return this.http.get<Comment>(`${this.url}/${encodeURIComponent(id)}`);
   }
 
+  getReplyCounts(ids: string[]) {
+    return this.http.post<{ items: { id: string; replyCount: number }[] }>(
+      `${this.url}/reply-counts`,
+      { ids },
+    );
+  }
+
   create(payload: CreateCommentRequest, files: readonly File[] = []) {
     if (files.length === 0) {
       return this.http.post<Comment>(this.url, payload);

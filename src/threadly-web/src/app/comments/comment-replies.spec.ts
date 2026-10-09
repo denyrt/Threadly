@@ -1,3 +1,4 @@
+import { provideQuietCommentsLive } from './comments-live-testing';
 import { provideTestTurnstile } from './turnstile-testing';
 import { Location, ViewportScroller } from '@angular/common';
 import { provideLocationMocks } from '@angular/common/testing';
@@ -36,6 +37,7 @@ describe('Comment replies', () => {
     TestBed.configureTestingModule({
       providers: [
         provideTestTurnstile(),
+        provideQuietCommentsLive(),
         provideRouter(routes),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -186,16 +188,17 @@ describe('Comment replies', () => {
     expect(element().querySelector('a[href="/comments/new"]')).not.toBeNull();
     button('Hide replies').click();
     await render();
-    expect(button('Show replies (101)')).toBeTruthy();
-    button('Show replies (101)').click();
+    expect(button('Show replies (100)')).toBeTruthy();
+    button('Show replies (100)').click();
     await render();
-    button('Show more').click();
-    flushReplies(root.id, [reply('next')], 'page-three', 'page-two');
+    expect(branch(root.id).textContent).toContain('Refresh replies before loading more');
+    button('Refresh replies').click();
+    flushReplies(root.id, [reply('first-page')], 'page-two');
     await render();
     http.expectNone((request) => request.url === '/api/comments');
   });
 
-  it('refreshes a complete branch in server order and retains the previous list if refresh fails', async () => {
+  it('refreshes only the first page even with nextCursor and retains the previous list on failure', async () => {
     await openFeed([{ ...root, replyCount: 1 }]);
     button('Show replies (1)').click();
     flushReplies(root.id, [reply('older')]);
@@ -203,6 +206,9 @@ describe('Comment replies', () => {
     await compose();
     submit();
     http.expectOne({ method: 'POST', url: '/api/comments' }).flush(reply('new'));
+    await render();
+    http.expectNone('/api/comments/root/replies');
+    button('Refresh replies').click();
     http
       .expectOne('/api/comments/root/replies')
       .flush({}, { status: 503, statusText: 'Unavailable' });
@@ -211,11 +217,14 @@ describe('Comment replies', () => {
     expect(element().textContent).toContain('Reply added.');
     button('Retry replies').click();
     flushReplies(root.id, [reply('server-first')], 'continuation');
-    flushReplies(root.id, [reply('older'), reply('new')], null, 'continuation');
+    http.expectNone('/api/comments/root/replies?cursor=continuation');
     await render();
     expect(
       Array.from(branch(root.id).querySelectorAll('.text')).map((item) => item.textContent),
-    ).toEqual(['Reply server-first', 'Reply older', 'Reply new']);
+    ).toEqual(['Reply server-first']);
+    button('Show more').click();
+    flushReplies(root.id, [reply('older'), reply('new')], null, 'continuation');
+    await render();
   });
 
   it('keeps failed drafts and restores focus on cancel with unique IDs across composers', async () => {
@@ -312,7 +321,7 @@ describe('Comment replies', () => {
     http.expectNone('/api/comments/one');
   });
 
-  it('includes a reply posted while the last page is still loading', async () => {
+  it('keeps invalidation without rereading when a reply is posted during loading', async () => {
     await openFeed([{ ...root, replyCount: 1 }]);
     button('Show replies (1)').click();
     const initial = http.expectOne('/api/comments/root/replies');
@@ -320,13 +329,14 @@ describe('Comment replies', () => {
     submit();
     http.expectOne({ method: 'POST', url: '/api/comments' }).flush(reply('new'));
     initial.flush({ items: [reply('older')], nextCursor: null });
-    flushReplies(root.id, [reply('older'), reply('new')]);
+    http.expectNone('/api/comments/root/replies');
     await render();
-    expect(branch(root.id).textContent).toContain('Reply new');
-    expect(branch(root.id).querySelectorAll('app-comment-thread').length).toBe(2);
+    expect(branch(root.id).textContent).not.toContain('Reply new');
+    expect(branch(root.id).textContent).toContain('Refresh replies before loading more');
+    expect(branch(root.id).querySelectorAll('app-comment-thread').length).toBe(1);
   });
 
-  it('does not lose a second reply posted during a complete-branch refresh', async () => {
+  it('does not recursively refresh or clear a second reply posted during refresh', async () => {
     await openFeed([{ ...root, replyCount: 1 }]);
     button('Show replies (1)').click();
     flushReplies(root.id, [reply('older')]);
@@ -334,18 +344,21 @@ describe('Comment replies', () => {
     await compose();
     submit();
     http.expectOne({ method: 'POST', url: '/api/comments' }).flush(reply('first'));
+    await render();
+    button('Refresh replies').click();
     const refresh = http.expectOne('/api/comments/root/replies');
     await render();
     await compose();
     submit();
     http.expectOne({ method: 'POST', url: '/api/comments' }).flush(reply('second'));
     refresh.flush({ items: [reply('older'), reply('first')], nextCursor: null });
-    flushReplies(root.id, [reply('older'), reply('first'), reply('second')]);
+    http.expectNone('/api/comments/root/replies');
     await render();
-    expect(branch(root.id).querySelectorAll('app-comment-thread').length).toBe(3);
+    expect(branch(root.id).querySelectorAll('app-comment-thread').length).toBe(2);
+    expect(branch(root.id).textContent).toContain('Refresh replies before loading more');
     button('Hide replies').click();
     await render();
-    expect(button('Show replies (3)')).toBeTruthy();
+    expect(button('Show replies (1)')).toBeTruthy();
   });
 
   it('updates the immediate parent in saved views and preserves neighbouring branches after posting deeper', async () => {
@@ -371,9 +384,9 @@ describe('Comment replies', () => {
     button('← Back').click();
     await navigatedBack;
     await render();
-    flushReplies('child', [reply('grandchild', 'child'), reply('new-grandchild', 'child')]);
-    await render();
-    expect(branch('child').textContent).toContain('Reply new-grandchild');
+    http.expectNone('/api/comments/child/replies');
+    expect(branch('child').textContent).toContain('Reply grandchild');
+    expect(branch('child').textContent).toContain('Refresh replies before loading more');
     http.expectNone('/api/comments/root/replies');
     button('Hide replies', element().querySelector('app-comment-card')!).click();
     await render();

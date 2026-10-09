@@ -39,6 +39,40 @@
       Reply added. <a [routerLink]="['/comments', created.id]">View reply</a>
     </p>
   }
+  @if (branch.changes.target(); as target) {
+    <p class="notice" role="status">
+      New replies available. <a [routerLink]="['/comments', target]">View new reply</a>
+    </p>
+  } @else if (branch.changes.possible()) {
+    <p class="muted" role="status">Replies may have changed.</p>
+  }
+  @if (
+    level() < 4 &&
+    (detail() ||
+      branch.expanded() ||
+      branch.changes.stale() ||
+      live.status() === 'unavailable' ||
+      live.countsUnavailable() ||
+      live.limited())
+  ) {
+    <div class="branch-status">
+      <button
+        class="button quiet"
+        type="button"
+        (click)="refreshReplies()"
+        [disabled]="branch.loading() || views.composers() > 0"
+      >
+        Refresh replies
+      </button>
+      <span class="muted">Refresh returns to the first 10 replies.</span>
+      @if (views.composers() > 0) {
+        <p class="muted">Finish or close open composers before refreshing replies.</p>
+      }
+      @if (!branch.expanded() && branch.error()) {
+        <p class="error-message" role="alert">{{ branch.error() }}</p>
+      }
+    </div>
+  }
 </app-comment-card>
 @if (composing()) {
   <app-comment-composer
@@ -57,19 +91,33 @@
     [attr.aria-busy]="branch.loading()"
   >
     @for (reply of branch.items(); track reply.id) {
-      <app-comment-thread [comment]="reply" [level]="level() + 1" />
+      <app-comment-thread
+        [comment]="reply"
+        [level]="level() + 1"
+        [active]="active() && branch.expanded()"
+      />
     }
     @if (branch.loading()) {
       <p class="branch-status muted" role="status">Loading replies…</p>
     } @else if (branch.error()) {
       <div class="branch-status">
         <p class="error-message" role="alert">{{ branch.error() }}</p>
-        <button class="button secondary" type="button" (click)="loadMore()">Retry replies</button>
+        <button
+          class="button secondary"
+          type="button"
+          [disabled]="(branch.refreshFailed || branch.changes.stale()) && views.composers() > 0"
+          (click)="branch.refreshFailed || branch.changes.stale() ? refreshReplies() : loadMore()"
+        >
+          Retry replies
+        </button>
       </div>
     } @else if (branch.loaded() && branch.items().length === 0) {
       <p class="branch-status muted">No replies yet.</p>
-    } @else if (branch.nextCursor()) {
+    } @else if (branch.nextCursor() && !branch.changes.stale()) {
       <button class="button quiet load-more" type="button" (click)="loadMore()">Show more</button>
+    }
+    @if (branch.loaded() && branch.changes.stale()) {
+      <p class="branch-status muted">Refresh replies before loading more.</p>
     }
   </section>
 }

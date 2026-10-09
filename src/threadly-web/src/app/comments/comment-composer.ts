@@ -19,6 +19,8 @@ import { Comment, CommentPreview, TextContentBlock, ValidationProblem } from './
 import { CommentBody } from './comment-body';
 import { CommentsApi } from './comments-api';
 import { TurnstileWidget } from './turnstile-widget';
+import { CommentViewState } from './comment-view-state';
+import { CommentsLive } from './comments-live';
 
 @Component({
   selector: 'app-comment-composer',
@@ -28,6 +30,9 @@ import { TurnstileWidget } from './turnstile-widget';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CommentComposer implements AfterViewInit {
+  private readonly views = inject(CommentViewState);
+  private readonly live = inject(CommentsLive);
+  private protectingDraft = true;
   private readonly captchaWidget = viewChild(TurnstileWidget);
   readonly captchaToken = signal<string | null>(null);
   private readonly textInput = viewChild.required<ElementRef<HTMLTextAreaElement>>('textInput');
@@ -84,6 +89,8 @@ export class CommentComposer implements AfterViewInit {
   });
 
   constructor() {
+    this.views.composers.update((count) => count + 1);
+    this.destroyRef.onDestroy(() => this.releaseDraft());
     this.form.controls.text.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.previewRevision++;
       this.previewResult.set(null);
@@ -104,6 +111,12 @@ export class CommentComposer implements AfterViewInit {
 
   ngAfterViewInit() {
     this.usernameInput().nativeElement.focus();
+  }
+
+  private releaseDraft() {
+    if (!this.protectingDraft) return;
+    this.protectingDraft = false;
+    this.views.composers.update((count) => count - 1);
   }
 
   fieldId(name: string) {
@@ -202,7 +215,11 @@ export class CommentComposer implements AfterViewInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (comment) => this.created.emit(comment),
+        next: (comment) => {
+          this.live.confirmCreated(comment);
+          this.releaseDraft();
+          this.created.emit(comment);
+        },
         error: (error: HttpErrorResponse) => {
           const problem = error.error as ValidationProblem | null;
           if (error.status === 400 && problem?.errors) {

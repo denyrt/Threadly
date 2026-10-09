@@ -41,6 +41,13 @@ internal sealed class CommentaryRepository(ThreadlyDbContext dbContext) : IComme
         return dbContext.Commentaries.AnyAsync(commentary => commentary.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ReplyCountDto>> GetReplyCountsAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
+    {
+        return await dbContext.Commentaries.AsNoTracking().Where(comment => ids.Contains(comment.Id))
+            .Select(comment => new ReplyCountDto(comment.Id, dbContext.Commentaries.Count(reply => reply.ParentId == comment.Id)))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<CommentaryDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return dbContext.Commentaries.AsNoTracking()

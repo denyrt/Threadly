@@ -1,3 +1,4 @@
+import { provideQuietCommentsLive } from './comments-live-testing';
 import { provideTestTurnstile } from './turnstile-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { ViewportScroller } from '@angular/common';
@@ -27,6 +28,7 @@ describe('Comments', () => {
     TestBed.configureTestingModule({
       providers: [
         provideTestTurnstile(),
+        provideQuietCommentsLive(),
         provideRouter(routes),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -340,7 +342,7 @@ describe('Comments', () => {
 
     expect(element().textContent).toContain('This comment could not be found.');
     expect(element().querySelector('a')?.getAttribute('href')).toBe('/comments');
-    expect(element().querySelector('button')).toBeNull();
+    expect(element().querySelector('.feed button')).toBeNull();
   });
 
   it('cancels an obsolete detail request when navigating to another comment', async () => {
